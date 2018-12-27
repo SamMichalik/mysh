@@ -52,7 +52,7 @@ main(int argc, char **argv)
 				 * ( as an alternative to complicating the grammar to handle
 				 *  this situation )
 				 */
-				char * nl = str_cat(optarg, "\n");
+				char *nl = str_cat(optarg, "\n");
 
 				yy_scan_string(nl);
 				yyparse();
@@ -86,7 +86,7 @@ main(int argc, char **argv)
 				free(line);
 			}
 
-			char * prompt = get_prompt();
+			char *prompt = get_prompt();
 			sigprocmask(SIG_UNBLOCK, &sigs, NULL);
 			line = readline(prompt);
 			sigprocmask(SIG_SETMASK, &sigs, NULL);
@@ -101,7 +101,7 @@ main(int argc, char **argv)
 				 * bison's parsing. Rather than changing the grammar we just
 				 * append the newline artificially.
 				 */
-				char * nl = str_cat(line, "\n");
+				char *nl = str_cat(line, "\n");
 				free(line);
 				line = nl;
 
@@ -135,7 +135,7 @@ main(int argc, char **argv)
 				err(1, "open");
 			} else {
 				char buf[BUFFSIZE];
-				char * line = (char *)NULL;
+				char *line = (char *)NULL;
 				int r;
 
 				lineno = 0;
@@ -156,7 +156,7 @@ main(int argc, char **argv)
 							if (line == NULL) {
 								line = sub_line;
 							} else {
-								char * new_line = str_cat(line, sub_line);
+								char *new_line = str_cat(line, sub_line);
 								free(line);
 								free(sub_line);
 								line = new_line;

@@ -99,7 +99,7 @@ char * str_cat(char *s1, char *s2);
 char * get_prompt();
 
 /*
- *	Global variable declarations
+ *	Global variable definitions
  */
 
 int ret_val;

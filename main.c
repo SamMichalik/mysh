@@ -211,4 +211,6 @@ readline_line_reset(void)
 	rl_on_new_line();
 	rl_replace_line("", 0);
 	rl_redisplay();
+
+	return (0);
 }

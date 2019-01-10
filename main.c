@@ -46,15 +46,16 @@ main(int argc, char **argv)
 	rl_signal_event_hook = readline_line_reset;
 
 	int opt;
+	char *bname;
 	while ((opt = getopt(argc, argv, "c:")) != -1) {
 
 		switch (opt) {
 			case 'c': {
 
 				/*
-				 * Artifically append a newline to simplify bison's parsing.
-				 * ( as an alternative to complicating the grammar to handle
-				 *  this situation )
+				 * Artifically append a newline to simplify bison's
+				 * parsing. ( as an alternative to complicating the 
+				 * grammar to handle this situation )
 				 */
 				char *nl = str_cat(optarg, "\n");
 
@@ -67,7 +68,8 @@ main(int argc, char **argv)
 			}
 			case '?':
 				/* Todo: Improve usage message */
-				fprintf(stderr, "usage: %s \n", basename(argv[0]));
+				bname = basename(argv[0]);
+				fprintf(stderr, "usage: %s \n", bname);
 				exit(EXIT_FAILURE);
 				break;
 		}
@@ -134,9 +136,10 @@ interactive_mode(void)
 			add_history(line);
 
 			/*
-			 * Readline's stripping of the newline character complicates
-			 * bison's parsing. Rather than changing the grammar we just
-			 * append the newline artificially.
+			 * Readline's stripping of the newline character 
+			 * complicates bison's parsing. Rather than
+			 * changing the grammar we just append the newline
+			 * artificially.
 			 */
 			char *nl = str_cat(line, "\n");
 			free(line);
@@ -157,6 +160,9 @@ void
 execute_script(char *scrpath)
 {
 	char *fpath = realpath(scrpath, NULL);
+	if (!fpath) {
+		err(1, "realpath");
+	}
 
 	int fd = open(fpath, O_RDONLY);
 	if (fd == -1) {
@@ -207,7 +213,6 @@ execute_script(char *scrpath)
 			}
 
 			if (r == 0) {
-				printf("Exiting this way\n");
 				break;
 			}
 		}

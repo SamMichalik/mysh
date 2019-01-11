@@ -18,6 +18,8 @@
 
 char * prep_line(char *line);
 
+int cd_home(char *cwd);
+
 void
 exec_cmds(struct command **cmdv)
 {
@@ -113,22 +115,9 @@ cd_executioner(char *cmd, char **args)
 
 	if (*(args + 1) == NULL) {
 		/* called without arguments - go home */
-		char *home = getenv("HOME");
-		if (!home) {
-			fprintf(stderr, "mysh: cd: HOME not set\n");
-			ret_val = 1;
-			return (ret_val);
+		if (cd_home(cwd) == 1) {
+			return ret_val;
 		}
-
-		if (chdir(home) == -1) {
-			err(1, "chdir");
-		}
-
-		if (setenv("OLDPWD", cwd, 1) == -1)
-			err(1, "setenv");
-
-		if (setenv("PWD", home, 1) == -1)
-			err(1, "setenv");
 
 	} else if (*(args + 2) == NULL) {
 		/* called with one argument */
@@ -286,4 +275,25 @@ prep_line(char *line)
 		}
 	}
 	return (line);
+}
+
+int
+cd_home(char *cwd)
+{
+	char *home = getenv("HOME");
+	if (!home) {
+		fprintf(stderr, "mysh: cd: HOME not set\n");
+		ret_val = 1;
+		return (ret_val);
+	}
+
+	if (chdir(home) == -1) {
+		err(1, "chdir");
+	}
+
+	if (setenv("OLDPWD", cwd, 1) == -1)
+		err(1, "setenv");
+
+	if (setenv("PWD", home, 1) == -1)
+		err(1, "setenv");
 }

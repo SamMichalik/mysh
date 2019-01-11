@@ -19,6 +19,7 @@
 #include "mysh.h"
 
 #define	BUFFSIZE    1000
+#define LINELIMIT	32000
 
 extern int ret_val;
 extern int lineno;
@@ -36,6 +37,8 @@ void execute_script(char *scrpath);
 char * buf_cpy(char *buf, int len, char *line);
 
 void execute_line(char *line);
+
+int check_line_length(char *line);
 
 int
 main(int argc, char **argv)
@@ -63,8 +66,9 @@ main(int argc, char **argv)
 				 */
 				char *nl = str_cat(optarg, "\n");
 
-				yy_scan_string(nl);
-				yyparse();
+				if (check_line_length(nl)) {
+					execute_line(nl);
+				}
 
 				free(nl);
 
@@ -149,8 +153,9 @@ interactive_mode(void)
 			free(line);
 			line = nl;
 
-			yy_scan_string(line);
-			yyparse();
+			if (check_line_length(line)) {
+				execute_line(line);
+			}
 		}
 	} while (line != NULL);
 
@@ -197,7 +202,9 @@ execute_script(char *scrpath)
 					line = buf_cpy((buf + old_pos + 1), len, line);
 
 					lineno++;
-					execute_line(line);
+					if (check_line_length(line)) {
+						execute_line(line);
+					}
 					free(line);
 					line = (char *)NULL;
 					old_pos = pos;
@@ -224,7 +231,9 @@ execute_script(char *scrpath)
 			}
 
 			lineno++;
-			execute_line(line);
+			if (check_line_length(line)) {
+				execute_line(line);
+			}
 			free(line);
 			line = (char *)NULL;
 
@@ -264,7 +273,7 @@ buf_cpy(char *buf, int len, char *line)
 		free(sub_line);
 		line = new_line;
 	}
-	return line;
+	return (line);
 }
 
 void
@@ -274,4 +283,15 @@ execute_line(char *line)
 		yy_scan_string(line);
 		yyparse();
 	}
+}
+
+int
+check_line_length(char *line)
+{
+	if (strlen(line) > LINELIMIT) {
+		ret_val = 1;
+		fprintf(stderr, "mysh: maximum line length exceeded\n");
+		return (0);
+	}
+	return (1);
 }

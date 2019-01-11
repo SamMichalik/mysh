@@ -29,6 +29,8 @@ int readline_line_reset(void);
 
 int interactive_mode(void);
 
+void usage(void);
+
 int
 main(int argc, char **argv)
 {
@@ -42,7 +44,6 @@ main(int argc, char **argv)
 	rl_signal_event_hook = readline_line_reset;
 
 	int opt;
-	char *bname;
 	while ((opt = getopt(argc, argv, "c:")) != -1) {
 
 		switch (opt) {
@@ -64,11 +65,8 @@ main(int argc, char **argv)
 				return (ret_val);
 			}
 			case '?':
-				/* Todo: Improve usage message */
-				bname = basename(argv[0]);
-				fprintf(stderr, "usage: %s \n", bname);
+				usage();
 				exit(EXIT_FAILURE);
-				break;
 		}
 	}
 
@@ -158,4 +156,12 @@ interactive_mode(void)
 		err(1, "sigprocmask");
 
 	return (ret_val);
+}
+
+void
+usage()
+{
+	fprintf(stderr, "%-8s mysh \n", "usage:");
+	fprintf(stderr, "%-8s mysh -c command\n", "");
+	fprintf(stderr, "%-8s mysh script ...\n", "");
 }

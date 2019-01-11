@@ -258,8 +258,9 @@ void
 execute_line(char *line)
 {
 	if (line) {
-		yy_scan_string(line);
+		YY_BUFFER_STATE s = yy_scan_string(line);
 		yyparse();
+		yy_delete_buffer(s);
 	}
 }
 
@@ -268,10 +269,12 @@ prep_line(char *line)
 {
 	if (line) {
 		int len = strlen(line);
-		if (line[len - 1] != '\n') {
-			char *nl = str_cat(line, "\n");
-			free(line);
-			line = nl;
+		if (len > 0) {
+			if (line[len - 1] != '\n') {
+				char *nl = str_cat(line, "\n");
+				free(line);
+				line = nl;
+			}
 		}
 	}
 	return (line);

@@ -14,7 +14,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include "mysh.tab.h"
+#include "parser.tab.h"
 #include "lex.yy.h"
 #include "mysh.h"
 

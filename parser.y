@@ -26,6 +26,9 @@ extern int lineno;
 %token <charptr> WORD
 %token EOL
 %token <int_cmd> INTERNAL
+%token PIPE
+%token LREDIR
+%token RREDIR
 
 %type <sqh_ptr> args_seq
 %type <cqh_ptr> cmd_seq

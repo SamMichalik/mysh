@@ -5,6 +5,7 @@
 #include <sys/queue.h>
 
 #include "lex.yy.h"
+#include "parser_queues.h"
 #include "mysh.h"
 
 void yyerror(char *s);

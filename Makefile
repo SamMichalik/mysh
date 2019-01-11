@@ -1,9 +1,9 @@
-mysh:	main.c parser.y scanner.l mysh.c
+mysh:	mysh.c parser.y scanner.l execution.c parser_queues.c util.c
 		bison -d parser.y
 		flex --header-file=lex.yy.h scanner.l
-		cc -o $@ main.c mysh.c parser.tab.c lex.yy.c -lfl -lreadline
+		cc -o $@ mysh.c execution.c parser_queues.c util.c parser.tab.c lex.yy.c -lfl -lreadline
 
-debug:	main.c parser.y scanner.l mysh.c
+debug:	mysh.c parser.y scanner.l execution.c parser_queues.c util.c
 		bison -d parser.y
 		flex --header-file=lex.yy.h scanner.l
-		cc -g -o mysh.debug main.c mysh.c parser.tab.c lex.yy.c -lfl -lreadline
+		cc -g -o mysh.debug mysh.c parser_queues.c util.c parser.tab.c lex.yy.c -lfl -lreadline

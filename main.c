@@ -121,9 +121,12 @@ int
 interactive_mode(void)
 {
 	sigset_t sigs, osigs;
-	sigemptyset(&sigs);
-	sigaddset(&sigs, SIGINT);
-	sigprocmask(SIG_SETMASK, &sigs, &osigs);
+	if (sigemptyset(&sigs) == -1)
+		err(1, "sigemptyset");
+	if (sigaddset(&sigs, SIGINT) == -1)
+		err(1, "sigaddset");
+	if (sigprocmask(SIG_SETMASK, &sigs, &osigs) == -1)
+		err(1, "sigprocmask");
 
 	char *line = (char *)NULL;
 
@@ -134,9 +137,11 @@ interactive_mode(void)
 		}
 
 		char *prompt = get_prompt();
-		sigprocmask(SIG_UNBLOCK, &sigs, NULL);
+		if (sigprocmask(SIG_UNBLOCK, &sigs, NULL) == -1)
+			err(1, "sigprocmask");
 		line = readline(prompt);
-		sigprocmask(SIG_SETMASK, &sigs, NULL);
+		if (sigprocmask(SIG_SETMASK, &sigs, NULL) == -1)
+			err(1, "sigprocmask");
 		free(prompt);
 
 		/* parse the line and execute the commands sequentially */
@@ -160,7 +165,8 @@ interactive_mode(void)
 	} while (line != NULL);
 
 	printf("\n");
-	sigprocmask(SIG_UNBLOCK, &osigs, NULL);
+	if (sigprocmask(SIG_UNBLOCK, &osigs, NULL) == -1)
+		err(1, "sigprocmask");
 
 	return (ret_val);		
 }
@@ -260,6 +266,10 @@ char *
 buf_cpy(char *buf, int len, char *line)
 {
 	char *sub_line = malloc((len + 1) * sizeof (char));
+	if (!sub_line) {
+		err(1, "malloc");
+	}
+
 	for (int i = 0; i < len; i++) {
 		*(sub_line + i) = *(buf + i);
 	}

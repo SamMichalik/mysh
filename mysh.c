@@ -19,6 +19,9 @@ StringQueueHead *
 initialize_string_queue(StringQueueEntry *e)
 {
 	StringQueueHead *qhptr = malloc(sizeof (StringQueueHead));
+	if (!qhptr) {
+		err(1, "malloc");
+	}
 	STAILQ_INIT(qhptr);
 
 	STAILQ_INSERT_TAIL(qhptr, e, entries);
@@ -29,6 +32,9 @@ StringQueueEntry *
 create_string_queue_entry(char *s)
 {
 	StringQueueEntry *qeptr = malloc(sizeof (StringQueueEntry));
+	if (!qeptr) {
+		err(1, "malloc");
+	}
 	qeptr->string = s;
 	return (qeptr);
 }
@@ -63,6 +69,9 @@ string_queue_to_array(StringQueueHead *qhptr)
 
 	STAILQ_FOREACH(qeptr, qhptr, entries) { len++; }
 	cptrptr = malloc(len * sizeof (char *));
+	if (!cptrptr) {
+		err(1, "malloc");
+	}
 	STAILQ_FOREACH(qeptr, qhptr, entries) {
 		*(cptrptr + offs) = qeptr->string;
 		offs++;
@@ -80,6 +89,9 @@ CmdQueueHead *
 initialize_cmd_queue(CmdQueueEntry *eptr)
 {
 	CmdQueueHead *hptr = malloc(sizeof (CmdQueueHead));
+	if (!hptr) {
+		err(1, "malloc");
+	}
 	
 	STAILQ_INIT(hptr);
 	STAILQ_INSERT_TAIL(hptr, eptr, entries);
@@ -90,6 +102,9 @@ CmdQueueEntry *
 create_cmd_queue_entry(struct command *cmd)
 {
 	CmdQueueEntry *eptr = malloc(sizeof (CmdQueueEntry));
+	if (!eptr) {
+		err(1, "malloc");
+	}
 	eptr->cmdptr = cmd;
 	return (eptr);
 }
@@ -146,6 +161,9 @@ cmd_queue_to_array(CmdQueueHead *hptr)
 	STAILQ_FOREACH(eptr, hptr, entries) { len++; }
 	
 	cmdptrptr = malloc(len * sizeof (struct command *));
+	if (!cmdptrptr) {
+		err(1, "malloc");
+	}
 
 	STAILQ_FOREACH(eptr, hptr, entries) {
 		*(cmdptrptr + offs) = eptr->cmdptr;
@@ -178,6 +196,9 @@ exec_cmds(struct command **cmdv)
 				while (*(args + argc) != NULL) { argc++; }
 			}
 			char **argv = malloc((argc + 2) * sizeof (char *)); /* cmd + argv + NULL */
+			if (!argv) {
+				err(1, "malloc");
+			}
 			*argv = cmdptr->name;
 			for (int i = 0; i < argc; i++) {
 				*(argv + i + 1) = *(args + i);
@@ -205,15 +226,17 @@ general_executioner(char *cmd, char **args)
 	int pid, ret_val, i;
 
 	sigset_t sigs;
-	sigemptyset(&sigs);
-	sigaddset(&sigs, SIGINT);
+	if (sigemptyset(&sigs) == -1)
+		err(1, "sigemptyset");
+	if (sigaddset(&sigs, SIGINT) == -1)
+		err(1, "sigaddset");
 
 
-	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
+	if (sigprocmask(SIG_UNBLOCK, &sigs, NULL) == -1)
+		err(1, "sigprocmask");
 	switch(pid = fork()) {
 		case -1:
-			fprintf(stderr, "error\n");
-			exit(1);
+			err(1, "fork");
 			break;
 
 		case 0:
@@ -223,8 +246,10 @@ general_executioner(char *cmd, char **args)
 			break;
 
 		default:
-			sigprocmask(SIG_SETMASK, &sigs, NULL);
-			wait(&i);
+			if (sigprocmask(SIG_SETMASK, &sigs, NULL) == -1)
+				err(1, "sigprocmask");
+			if (wait(&i) == -1)
+				err(1, "wait");
 			if (WIFSIGNALED(i) != 0) {
 				fprintf(stderr, "Killed by signal %d\n", WTERMSIG(i));
 				ret_val = 128 + WTERMSIG(i);
@@ -282,6 +307,8 @@ cd_executioner(char *cmd, char **args)
 		} else {
 			/* Todo: handle paths starting with ~/ */
 			nwd = realpath(*(args + 1), NULL);
+			if (!nwd)
+				err(1, "realpath");
 		}
 
 		if (chdir(nwd) == -1) {
@@ -346,6 +373,9 @@ str_dup(char *s)
 
 	len = strlen(s) + 1;
 	ns = malloc(len * sizeof (char));
+	if (!ns) {
+		err(1, "malloc");
+	}
 
 	for (int j = 0; j < len; j++) {
 		*(ns + j) = *(s + j);
@@ -360,6 +390,9 @@ str_cat(char * s1, char * s2)
 	int l1 = strlen(s1);
 	int l2 = strlen(s2);
 	char *s = malloc((l1 + l2 + 1) * sizeof (char));
+	if (!s) {
+		err(1, "malloc");
+	}
 	int offs = 0;
 
 	while (*s1 != '\0') {

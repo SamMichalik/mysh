@@ -1,5 +1,6 @@
 %{
 #include <stdio.h>
+#include <err.h>
 #include <sys/queue.h>
 
 #include "lex.yy.h"
@@ -72,6 +73,8 @@ cmd_seq: cmd
 cmd: cmd_name
 	{
 		struct command *cmdptr = malloc(sizeof(struct command));
+		if (!cmdptr)
+			err(1, "malloc");
 		cmdptr->name = $1;
 		cmdptr->args = NULL;
 		cmdptr->executioner = general_executioner;
@@ -80,6 +83,8 @@ cmd: cmd_name
 	| cmd_name args_seq
 	{
 		struct command *cmdptr = malloc(sizeof(struct command));
+		if (!cmdptr)
+			err(1, "malloc");
 		cmdptr->name = $1;
 		cmdptr->args = string_queue_to_array($2);
 		cmdptr->executioner = general_executioner;
@@ -89,6 +94,8 @@ cmd: cmd_name
 	| INTERNAL
 	{
 		struct command *cmdptr = malloc(sizeof(struct command));
+		if (!cmdptr)
+			err(1, "malloc");
 		cmdptr->args = NULL;
 		switch ($1) {
 			case CD:
@@ -105,6 +112,8 @@ cmd: cmd_name
 	| INTERNAL args_seq
 	{
 		struct command *cmdptr = malloc(sizeof(struct command));
+		if (!cmdptr)
+			err(1, "malloc");
 		cmdptr->args = string_queue_to_array($2);
 		shallow_destroy_string_queue($2);
 		switch ($1) {

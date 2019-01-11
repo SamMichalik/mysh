@@ -241,28 +241,40 @@ cd_executioner(char *cmd, char **args)
 {
 	int ret_val = 0;
 
+	char *cwd = getcwd(NULL, 0);
+	if (!cwd) {
+		err(1, "getcwd");
+	}
+
 	if (*(args + 1) == NULL) {
 
-		if (chdir(getenv("HOME")) == -1) {
-			err(1, "chdir");
-		} else {
-			char *s1 = "PWD=";
-			char *s2 = "OLDPWD=";
-
-			if (setenv("OLDPWD", getenv("PWD"), 1) == -1)
-				err(1, "setenv");
-
-			if (setenv("PWD", getenv("HOME"), 1) == -1)
-				err(1, "setenv");
-
+		char *home = getenv("HOME");
+		if (!home) {
+			fprintf(stderr, "mysh: cd: HOME not set\n");
+			ret_val = 1;
+			return ret_val;
 		}
+
+		if (chdir(home) == -1) {
+			err(1, "chdir");
+		} 
+		
+		char *s1 = "PWD=";
+		char *s2 = "OLDPWD=";
+
+		if (setenv("OLDPWD", cwd, 1) == -1)
+			err(1, "setenv");
+
+		if (setenv("PWD", home, 1) == -1)
+			err(1, "setenv");
+
 	} else if (*(args + 2) == NULL) {
 
 		char *nwd;
 
 		if (strcmp(*(args + 1), "-") == 0 ) {
 			nwd = str_dup(getenv("OLDPWD"));
-			if (nwd == NULL) {
+			if (!nwd) {
 				fprintf(stderr, "mysh: cd: OLDPWD not set\n");
 				ret_val = 1;
 				return ret_val;
@@ -279,7 +291,7 @@ cd_executioner(char *cmd, char **args)
 			char *s1 = "PWD=";
 			char *s2 = "OLDPWD=";
 
-			if (setenv("OLDPWD", getenv("PWD"), 1) == -1)
+			if (setenv("OLDPWD", cwd, 1) == -1)
 				err(1, "setenv");
 
 			if (setenv("PWD", nwd, 1) == -1)
@@ -292,6 +304,7 @@ cd_executioner(char *cmd, char **args)
 		ret_val = 1;
 	}
 
+	free(cwd);
 	return (ret_val);
 }
 
@@ -368,10 +381,16 @@ str_cat(char * s1, char * s2)
 char *
 get_prompt()
 {
+	char *cwd = getcwd(NULL, 0);
+	if (!cwd) {
+		err(1, "getcwd");
+	}
+
 	char *s = "mysh:";
 	char *s2 = "$ ";
-	s = str_cat(s, getenv("PWD"));
+	s = str_cat(s, cwd);
 	s2 = str_cat(s, s2);
 	free(s);
+	free(cwd);
 	return (s2);
 }

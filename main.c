@@ -33,6 +33,10 @@ int interactive_mode(void);
 
 void execute_script(char *scrpath);
 
+char * buf_cpy(char *buf, int len, char *line);
+
+void execute_line(char *line);
+
 int
 main(int argc, char **argv)
 {
@@ -159,6 +163,15 @@ interactive_mode(void)
 void
 execute_script(char *scrpath)
 {
+	/*
+	 * After the script is executed, we want
+	 * to return to the original location.
+	 */
+	char *cwd = getcwd(NULL, 0);
+	if (!cwd) {
+		err(1, "getcwd");
+	}
+
 	char *fpath = realpath(scrpath, NULL);
 	if (!fpath) {
 		err(1, "realpath");
@@ -173,7 +186,7 @@ execute_script(char *scrpath)
 		int r;
 
 		lineno = 0;
-		while ((r = read(fd, buf, BUFFSIZE)) != -1) {
+		while ((r = read(fd, buf, BUFFSIZE)) > 0) {
 			int pos = 0;
 			int old_pos = -1;
 
@@ -181,24 +194,10 @@ execute_script(char *scrpath)
 				/* on newline encounter execute the built line */
 				if (buf[pos] == 10) {
 					int len = (pos - old_pos);
-					char *sub_line = malloc((len + 1) * sizeof (char));
-
-					for (int i = 0; i < len; i++) {
-						*(sub_line + i) = buf[old_pos + i + 1];
-					}
-					*(sub_line + len) = '\0';
-					if (line == NULL) {
-						line = sub_line;
-					} else {
-						char *new_line = str_cat(line, sub_line);
-						free(line);
-						free(sub_line);
-						line = new_line;
-					}
+					line = buf_cpy((buf + old_pos + 1), len, line);
 
 					lineno++;
-					yy_scan_string(line);
-					yyparse();
+					execute_line(line);
 					free(line);
 					line = (char *)NULL;
 					old_pos = pos;
@@ -211,13 +210,29 @@ execute_script(char *scrpath)
 
 				pos++;
 			}
-
-			if (r == 0) {
-				break;
-			}
+			/* store the unread remains of the buffer */
+			int len = (pos - old_pos) - 1;
+			line = buf_cpy((buf + old_pos + 1), len, line);
 		}
 
-		if (r == -1) {
+		if ( r == 0 && line != NULL) {
+			int len = strlen(line);
+			if (line[len - 1] != '\n') {
+				char *nl = str_cat(line, "\n");
+				free(line);
+				line = nl;
+			}
+
+			lineno++;
+			execute_line(line);
+			free(line);
+			line = (char *)NULL;
+
+			/* encountered a syntax error */
+			if (ret_val == 254) {
+				exit(ret_val);
+			}
+		} else if (r == -1) {
 			err(1, "read");
 		}
 	}
@@ -226,4 +241,37 @@ execute_script(char *scrpath)
 		err(1, "close");
 	}
 	free(fpath);
+
+	if (chdir(cwd) == -1) {
+		err(1, "chdir");
+	}
+}
+
+char *
+buf_cpy(char *buf, int len, char *line)
+{
+	char *sub_line = malloc((len + 1) * sizeof (char));
+	for (int i = 0; i < len; i++) {
+		*(sub_line + i) = *(buf + i);
+	}
+	*(sub_line + len) = '\0';
+
+	if (!line) {
+		line = sub_line;
+	} else {
+		char *new_line = str_cat(line, sub_line);
+		free(line);
+		free(sub_line);
+		line = new_line;
+	}
+	return line;
+}
+
+void
+execute_line(char *line)
+{
+	if (line) {
+		yy_scan_string(line);
+		yyparse();
+	}
 }

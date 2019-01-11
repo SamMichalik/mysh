@@ -1,9 +1,18 @@
-mysh:	mysh.c parser.y scanner.l execution.c parser_queues.c util.c
-		bison -d parser.y
-		flex --header-file=lex.yy.h scanner.l
-		cc -Wall -o $@ mysh.c execution.c parser_queues.c util.c parser.tab.c lex.yy.c -lfl -lreadline
+O_DEBUG = mysh.debug
+C_FILES = execution.c parser_queues.c util.c
 
-debug:	mysh.c parser.y scanner.l execution.c parser_queues.c util.c
+ifeq (`uname`,Darwin)
+	FLEX = -ll
+else
+	FLEX = -lfl
+endif
+
+mysh:	mysh.c parser.y scanner.l $(C_FILES)
 		bison -d parser.y
 		flex --header-file=lex.yy.h scanner.l
-		cc -Wall -g -o mysh.debug mysh.c parser_queues.c util.c parser.tab.c lex.yy.c -lfl -lreadline
+		cc -o $@ mysh.c $(C_FILES) parser.tab.c lex.yy.c $(FLEX) -lreadline
+
+debug:	mysh.c parser.y scanner.l $(C_FILES)
+		bison -d parser.y
+		flex --header-file=lex.yy.h scanner.l
+		cc -g -o $(O_DEBUG) mysh.c $(C_FILES) parser.tab.c lex.yy.c $(FLEX) -lreadline

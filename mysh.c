@@ -298,11 +298,14 @@ cd_executioner(char *cmd, char **args)
 		char *nwd;
 
 		if (strcmp(*(args + 1), "-") == 0 ) {
-			nwd = str_dup(getenv("OLDPWD"));
-			if (!nwd) {
+			if (!getenv("OLDPWD")) {
 				fprintf(stderr, "mysh: cd: OLDPWD not set\n");
 				ret_val = 1;
 				return ret_val;
+			}
+			nwd = strdup(getenv("OLDPWD"));
+			if (!nwd) {
+				err(1, "strdup");
 			}
 		} else {
 			/* Todo: handle paths starting with ~/ */
@@ -360,29 +363,6 @@ destroy_cmd(struct command *cmdp)
 /*
  *	Utility function definitions
  */
-
-char *
-str_dup(char *s)
-{
-	if (!s) {
-		return (char *)NULL;
-	}	
-
-	int len = 0;
-	char *ns;
-
-	len = strlen(s) + 1;
-	ns = malloc(len * sizeof (char));
-	if (!ns) {
-		err(1, "malloc");
-	}
-
-	for (int j = 0; j < len; j++) {
-		*(ns + j) = *(s + j);
-	}
-
-	return ns;
-}
 
 char *
 str_cat(char * s1, char * s2)

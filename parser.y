@@ -1,5 +1,6 @@
 %{
 #include <stdio.h>
+#include <string.h>
 #include <err.h>
 #include <sys/queue.h>
 
@@ -102,11 +103,15 @@ cmd: cmd_name
 		cmdptr->args = NULL;
 		switch ($1) {
 			case CD:
-				cmdptr->name = str_dup("cd");
+				cmdptr->name = strdup("cd");
+				if (!(cmdptr->name))
+					err(1, "strdup");
 				cmdptr->executioner = cd_executioner;
 				break;
 			case EXIT:
-				cmdptr->name = str_dup("exit");
+				cmdptr->name = strdup("exit");
+				if (!(cmdptr->name))
+					err(1, "strdup");
 				cmdptr->executioner = exit_executioner;
 				break;
 		}
@@ -121,11 +126,15 @@ cmd: cmd_name
 		shallow_destroy_string_queue($2);
 		switch ($1) {
 			case CD:
-				cmdptr->name = str_dup("cd");
+				cmdptr->name = strdup("cd");
+				if (!(cmdptr->name))
+					err(1, "strdup");
 				cmdptr->executioner = cd_executioner;
 				break;
 			case EXIT:
-				cmdptr->name = str_dup("exit");
+				cmdptr->name = strdup("exit");
+				if (!(cmdptr->name))
+					err(1, "strdup");
 				cmdptr->executioner = exit_executioner;
 				break;
 		}
@@ -134,19 +143,25 @@ cmd: cmd_name
 
 cmd_name: WORD 
 	{ 
-		char *s = str_dup($1);
+		char *s = strdup($1);
+		if (!s)
+			err(1, "strdup");
 		$$ = s; 
 	}
 
 args_seq: WORD  
 	{ 
-		char *s = str_dup($1);
+		char *s = strdup($1);
+		if (!s)
+			err(1, "strdup");
 		StringQueueEntry *qeptr = create_string_queue_entry(s);
 		$$ = initialize_string_queue(qeptr); 
 	}
 	| args_seq WORD 
 	{ 
-		char *s = str_dup($2);
+		char *s = strdup($2);
+		if (!s)
+			err(1, "strdup");
 		StringQueueEntry *qeptr = create_string_queue_entry(s);
 		insert_string_queue($1, qeptr);
 		$$ = $1; 

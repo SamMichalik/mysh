@@ -92,8 +92,6 @@ void destroy_cmd(struct command *cmdp);
  *	Utility function declarations
  */
 
-char * str_dup(char *s);
-
 char * str_cat(char *s1, char *s2);
 
 char * get_prompt();

@@ -50,7 +50,7 @@ main(int argc, char **argv)
 
 				/*
 				 * Artifically append a newline to simplify bison's
-				 * parsing. ( as an alternative to complicating the 
+				 * parsing. ( as an alternative to complicating the
 				 * grammar to handle this situation )
 				 */
 				char *nl = str_cat(optarg, "\n");
@@ -138,7 +138,7 @@ interactive_mode(void)
 			add_history(line);
 
 			/*
-			 * Readline's stripping of the newline character 
+			 * Readline's stripping of the newline character
 			 * complicates bison's parsing. Rather than
 			 * changing the grammar we just append the newline
 			 * artificially.
@@ -157,5 +157,5 @@ interactive_mode(void)
 	if (sigprocmask(SIG_UNBLOCK, &osigs, NULL) == -1)
 		err(1, "sigprocmask");
 
-	return (ret_val);		
+	return (ret_val);
 }

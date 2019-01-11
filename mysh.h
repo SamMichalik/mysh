@@ -1,10 +1,10 @@
 #ifndef _MYSH_H
-#define _MYSH_H
+#define	_MYSH_H
 
 #include "parser_queues.h"
 
 #define	BUFFSIZE    1000
-#define LINELIMIT	32000
+#define	LINELIMIT	32000
 
 /*
  *	execution.c - Execution function declarations

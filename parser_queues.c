@@ -73,7 +73,7 @@ string_queue_to_array(StringQueueHead *qhptr)
 	}
 	*(cptrptr + offs) = NULL;
 
-	return cptrptr;
+	return (cptrptr);
 }
 
 /*
@@ -87,7 +87,6 @@ initialize_cmd_queue(CmdQueueEntry *eptr)
 	if (!hptr) {
 		err(1, "malloc");
 	}
-	
 	STAILQ_INIT(hptr);
 	STAILQ_INSERT_TAIL(hptr, eptr, entries);
 	return (hptr);
@@ -127,7 +126,8 @@ shallow_destroy_cmd_queue(CmdQueueHead *hptr)
 	free(hptr);
 }
 
-void destroy_cmd_queue(CmdQueueHead *hptr)
+void
+destroy_cmd_queue(CmdQueueHead *hptr)
 {
 	CmdQueueEntry *e1, *e2;
 
@@ -154,7 +154,7 @@ cmd_queue_to_array(CmdQueueHead *hptr)
 	CmdQueueEntry *eptr;
 
 	STAILQ_FOREACH(eptr, hptr, entries) { len++; }
-	
+
 	cmdptrptr = malloc(len * sizeof (struct command *));
 	if (!cmdptrptr) {
 		err(1, "malloc");
@@ -173,10 +173,10 @@ void
 destroy_cmd(struct command *cmdp)
 {
 	free(cmdp->name);
-	
+
 	char **argv = cmdp->args;
 	if (cmdp->args != NULL) {
-		while(*argv != NULL) {
+		while (*argv != NULL) {
 			free(*argv);
 			argv++;
 		}

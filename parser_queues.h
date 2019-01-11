@@ -1,5 +1,5 @@
 #ifndef _PARSER_QUEUES_H
-#define _PARSER_QUEUES_H
+#define	_PARSER_QUEUES_H
 
 #include <sys/queue.h>
 

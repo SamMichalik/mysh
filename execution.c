@@ -54,7 +54,7 @@ exec_cmds(struct command **cmdv)
 			free(argv);
 
 			cmdv++;
-		}   
+		}
 	}
 }
 
@@ -72,7 +72,7 @@ general_executioner(char *cmd, char **args)
 
 	if (sigprocmask(SIG_UNBLOCK, &sigs, NULL) == -1)
 		err(1, "sigprocmask");
-	switch(pid = fork()) {
+	switch (pid = fork()) {
 		case -1:
 			err(1, "fork");
 			break;
@@ -115,13 +115,13 @@ cd_executioner(char *cmd, char **args)
 		if (!home) {
 			fprintf(stderr, "mysh: cd: HOME not set\n");
 			ret_val = 1;
-			return ret_val;
+			return (ret_val);
 		}
 
 		if (chdir(home) == -1) {
 			err(1, "chdir");
-		} 
-		
+		}
+
 		char *s1 = "PWD=";
 		char *s2 = "OLDPWD=";
 
@@ -135,11 +135,11 @@ cd_executioner(char *cmd, char **args)
 
 		char *nwd;
 
-		if (strcmp(*(args + 1), "-") == 0 ) {
+		if (strcmp(*(args + 1), "-") == 0) {
 			if (!getenv("OLDPWD")) {
 				fprintf(stderr, "mysh: cd: OLDPWD not set\n");
 				ret_val = 1;
-				return ret_val;
+				return (ret_val);
 			}
 			nwd = strdup(getenv("OLDPWD"));
 			if (!nwd) {
@@ -239,7 +239,7 @@ execute_script(char *scrpath)
 			line = buf_cpy((buf + old_pos + 1), len, line);
 		}
 
-		if ( r == 0 && line != NULL) {
+		if (r == 0 && line != NULL) {
 			int len = strlen(line);
 			if (line[len - 1] != '\n') {
 				char *nl = str_cat(line, "\n");

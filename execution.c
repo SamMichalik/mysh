@@ -124,9 +124,6 @@ cd_executioner(char *cmd, char **args)
 			err(1, "chdir");
 		}
 
-		char *s1 = "PWD=";
-		char *s2 = "OLDPWD=";
-
 		if (setenv("OLDPWD", cwd, 1) == -1)
 			err(1, "setenv");
 
@@ -159,9 +156,6 @@ cd_executioner(char *cmd, char **args)
 			fprintf(stderr, "mysh: cd: %s: No such file or directory\n", *(args + 1));
 			ret_val = 1;
 		} else {
-			char *s1 = "PWD=";
-			char *s2 = "OLDPWD=";
-
 			if (setenv("OLDPWD", cwd, 1) == -1)
 				err(1, "setenv");
 

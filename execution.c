@@ -16,6 +16,8 @@
 #include "mysh.h"
 #include "parser_queues.h"
 
+char * prep_line(char *line);
+
 void
 exec_cmds(struct command **cmdv)
 {
@@ -110,7 +112,7 @@ cd_executioner(char *cmd, char **args)
 	}
 
 	if (*(args + 1) == NULL) {
-
+		/* called without arguments - go home */
 		char *home = getenv("HOME");
 		if (!home) {
 			fprintf(stderr, "mysh: cd: HOME not set\n");
@@ -132,10 +134,11 @@ cd_executioner(char *cmd, char **args)
 			err(1, "setenv");
 
 	} else if (*(args + 2) == NULL) {
-
+		/* called with one argument */
 		char *nwd;
 
 		if (strcmp(*(args + 1), "-") == 0) {
+			/* command was 'cd -' */
 			if (!getenv("OLDPWD")) {
 				fprintf(stderr, "mysh: cd: OLDPWD not set\n");
 				ret_val = 1;
@@ -240,12 +243,7 @@ execute_script(char *scrpath)
 		}
 
 		if (r == 0 && line != NULL) {
-			int len = strlen(line);
-			if (line[len - 1] != '\n') {
-				char *nl = str_cat(line, "\n");
-				free(line);
-				line = nl;
-			}
+			line = prep_line(line);
 
 			lineno++;
 			if (check_line_length(line)) {
@@ -280,4 +278,18 @@ execute_line(char *line)
 		yy_scan_string(line);
 		yyparse();
 	}
+}
+
+char *
+prep_line(char *line)
+{
+	if (line) {
+		int len = strlen(line);
+		if (line[len - 1] != '\n') {
+			char *nl = str_cat(line, "\n");
+			free(line);
+			line = nl;
+		}
+	}
+	return (line);
 }

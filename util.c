@@ -7,7 +7,7 @@
 #include "mysh.h"
 
 char *
-str_cat(char * s1, char * s2)
+str_cat(char *s1, char *s2)
 {
 	int l1 = strlen(s1);
 	int l2 = strlen(s2);

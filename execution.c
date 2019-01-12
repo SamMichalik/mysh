@@ -299,4 +299,6 @@ cd_home(char *cwd)
 
 	if (setenv("PWD", home, 1) == -1)
 		err(1, "setenv");
+
+	return (0);
 }

@@ -116,7 +116,7 @@ cd_executioner(char *cmd, char **args)
 	if (*(args + 1) == NULL) {
 		/* called without arguments - go home */
 		if (cd_home(cwd) == 1) {
-			return ret_val;
+			return (ret_val);
 		}
 
 	} else if (*(args + 2) == NULL) {

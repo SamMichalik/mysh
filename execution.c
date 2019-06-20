@@ -230,7 +230,9 @@ execute_script(char *scrpath)
 
 			lineno++;
 			if (check_line_length(line)) {
-				execute_line(line);
+                char *nl = str_cat(line, "\n");
+				execute_line(nl);
+                free(nl);
 			}
 			free(line);
 			line = (char *)NULL;

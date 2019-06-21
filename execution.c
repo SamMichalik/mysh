@@ -48,7 +48,7 @@ exec_cmds(struct command **cmdv)
 			*(argv + argc + 1) = NULL;
 
 			/* execute the command */
-			ret_val = cmdptr->executioner(cmdptr->name, argv);
+			ret_val = cmdptr->executioner(cmdptr, argv);
 
 			/* release memory referenced by command contents */
 			destroy_cmd(cmdptr);
@@ -63,7 +63,7 @@ exec_cmds(struct command **cmdv)
 }
 
 int
-general_executioner(char *cmd, char **args)
+general_executioner(struct command *cmdptr, char **args)
 {
 	int pid, ret_val, i;
 
@@ -82,8 +82,34 @@ general_executioner(char *cmd, char **args)
 			break;
 
 		case 0:
-			execvp(cmd, args);
-			fprintf(stderr, "mysh: %s: No such file or directory\n", cmd);
+            if (cmdptr->ldir != NULL) {
+                if (close(0) < 0) {
+                    err(1, "close");
+                }
+                if (open(cmdptr->ldir, O_RDONLY) < 0) {
+                    err(1, "open");
+                }
+            }
+
+            if (cmdptr->rdir != NULL) {
+                if (close(1) < 0) {
+                    err(1, "close");
+                }
+                if (open(cmdptr->rdir, O_WRONLY | O_CREAT | O_TRUNC, 0666) < 0) {
+                    err(1, "open");
+                }
+            }
+            else if (cmdptr->rrdir != NULL) {
+                if (close(1) < 0) {
+                    err(1, "close");
+                }
+                if (open(cmdptr->rrdir, O_WRONLY | O_CREAT | O_APPEND, 0666) < 0) {
+                    err(1, "open");
+                }
+            }
+
+			execvp(cmdptr->name, args);
+			fprintf(stderr, "mysh: %s: No such file or directory\n", cmdptr->name);
 			exit(127);
 			break;
 
@@ -104,7 +130,7 @@ general_executioner(char *cmd, char **args)
 }
 
 int
-cd_executioner(char *cmd, char **args)
+cd_executioner(struct command *cmdptr, char **args)
 {
 	int ret_val = 0;
 
@@ -163,7 +189,7 @@ cd_executioner(char *cmd, char **args)
 }
 
 int
-exit_executioner(char *cmd, char **args)
+exit_executioner(struct command *cmdptr, char **args)
 {
 	exit(ret_val);
 }

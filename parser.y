@@ -31,10 +31,12 @@ extern int lineno;
 %token PIPE
 %token LREDIR
 %token RREDIR
+%token RREDIR_APPEND
 
 %type <sqh_ptr> args_seq
 %type <cqh_ptr> cmd_seq
 %type <cmdptr> cmd
+%type <cmdptr> cmd_
 %type <charptr> cmd_name
 %type <cmdptrptr> line
 
@@ -63,17 +65,66 @@ line:   EOL
 		shallow_destroy_cmd_queue($1);
 	}
 
-cmd_seq: cmd
+cmd_seq: cmd_
 	{
 		CmdQueueEntry *eptr = create_cmd_queue_entry($1);
 		$$ = initialize_cmd_queue(eptr);
 	}
-	| cmd_seq SEMICOLON cmd
+	| cmd_seq SEMICOLON cmd_
 	{
 		CmdQueueEntry *eptr = create_cmd_queue_entry($3);
 		insert_cmd_queue($1, eptr);
 		$$ = $1;
 	}
+
+cmd_: cmd
+    {
+        $$ = $1;
+    }
+    | cmd_ RREDIR WORD
+    {
+        $$ = $1;
+        if ($$->rrdir) {
+            free($$->rrdir);
+            $$->rrdir = NULL;
+        }
+        if ($$->rdir) {
+            free($$->rdir);
+            $$->rdir = NULL;
+        }
+        char *s = strdup($3);
+		if (!s)
+			err(1, "strdup");
+        $$->rdir = s;
+    }
+    | cmd_ RREDIR_APPEND WORD
+    {
+        $$ = $1;
+        if ($$->rrdir) {
+            free($$->rrdir);
+            $$->rrdir = NULL;
+        }
+        if ($$->rdir) {
+            free($$->rdir);
+            $$->rdir = NULL;
+        }
+        char *s = strdup($3);
+		if (!s)
+			err(1, "strdup");
+        $$->rrdir = s;
+    }
+    | cmd_ LREDIR WORD
+    {
+        $$ = $1;
+        if ($$->ldir) {
+            free($$->ldir);
+        }
+        char *s = strdup($3);
+		if (!s)
+			err(1, "strdup");
+        $$->ldir = s;
+    }
+
 
 cmd: cmd_name
 	{
@@ -83,6 +134,9 @@ cmd: cmd_name
 		cmdptr->name = $1;
 		cmdptr->args = NULL;
 		cmdptr->executioner = general_executioner;
+        cmdptr->ldir = NULL;
+        cmdptr->rdir = NULL;
+        cmdptr->rrdir = NULL;
 		$$ = cmdptr;
 	}
 	| cmd_name args_seq
@@ -93,6 +147,9 @@ cmd: cmd_name
 		cmdptr->name = $1;
 		cmdptr->args = string_queue_to_array($2);
 		cmdptr->executioner = general_executioner;
+        cmdptr->ldir = NULL;
+        cmdptr->rdir = NULL;
+        cmdptr->rrdir = NULL;
 		shallow_destroy_string_queue($2);
 		$$ = cmdptr;
 	}

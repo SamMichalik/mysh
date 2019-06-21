@@ -12,11 +12,11 @@
 
 void exec_cmds(struct command **cmdv);
 
-int general_executioner(char *cmd, char **args);
+int general_executioner(struct command *cmdptr, char **args);
 
-int cd_executioner(char *cmd, char **args);
+int cd_executioner(struct command *cmdptr, char **args);
 
-int exit_executioner(char *cmd, char **args);
+int exit_executioner(struct command *cmdptr, char **args);
 
 void execute_script(char *scrpath);
 

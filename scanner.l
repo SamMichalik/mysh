@@ -16,6 +16,7 @@
 ";"/[ \t]*(cd|\'cd\'|\"cd\"|exit|\'exit\'|\"exit\")    { BEGIN INTERN; return SEMICOLON; }
 "|"				{ fprintf(stderr, "(defualt rule matched) "); return PIPE; }
 ">"				{ fprintf(stderr, "(defualt rule matched) "); return RREDIR; }
+">>"				{ fprintf(stderr, "(defualt rule matched) "); return RREDIR_APPEND; }
 "<"				{ fprintf(stderr, "(defualt rule matched) "); return LREDIR; }
 ";"             { return SEMICOLON; }
 "\n"            { return EOL; }

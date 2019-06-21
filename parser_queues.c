@@ -182,5 +182,15 @@ destroy_cmd(struct command *cmdp)
 		}
 	}
 
+    if (cmdp->ldir) {
+        free(cmdp->ldir);
+    }
+    if (cmdp->rdir) {
+        free(cmdp->rdir);
+    }
+    if (cmdp->rrdir) {
+        free(cmdp->rrdir);
+    }
+
 	free(cmdp->args);
 }

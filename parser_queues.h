@@ -24,7 +24,11 @@ struct cmd_queue_entry {
 struct command {
 	char *name;
 	char **args;
-	int (*executioner)(char *name, char **args);
+    char *ldir;
+    char *rdir;
+    char *rrdir;
+	/* int (*executioner)(char *name, char **args); */
+    int (*executioner)(struct command *cmdptr, char **args);
 };
 
 enum internal_cmd {

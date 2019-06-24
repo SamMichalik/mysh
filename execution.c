@@ -43,22 +43,22 @@ get_execvp_args(struct command *cmdptr)
 			while (*(args + argc) != NULL) { argc++; }
 		}
 		/* allocate space for the argument vector */
-		argv = malloc((argc + 2) * sizeof (char *)); /* cmd_name + argv + NULL */
+		argv = malloc((argc + 2) * sizeof (char *));
 		if (!argv)
 			err(1, "malloc");
 		/* set the values of the array */
 		if (!cmdptr->name)
-			return NULL;
-		
+			return (NULL);
+
 		*argv = cmdptr->name;
 		for (int i = 0; i < argc; i++) {
 			*(argv + i + 1) = *(args + i);
 		}
 		*(argv + argc + 1) = NULL;
-		
-		return argv;
+
+		return (argv);
 	}
-	return NULL;
+	return (NULL);
 }
 
 void
@@ -80,8 +80,7 @@ redirect(struct command *cmdptr)
 		if (open(cmdptr->rdir, O_WRONLY | O_CREAT | O_TRUNC, 0666) < 0) {
 			err(1, "open");
 		}
-	}
-	else if (cmdptr->rrdir != NULL) {
+	} else if (cmdptr->rrdir != NULL) {
 		if (close(1) < 0) {
 			err(1, "close");
 		}
@@ -132,16 +131,15 @@ exec_pipeline(CmdQueueHead *cqhptr)
 		int cmd_pids[pipeline_len];
 		int i = -1;
 		int stat_loc;
-		
-		/* store std in & out for later as it might be replaced by pipe file descs. */
+
 		int stdin_dup_fd = dup(0);
 		int stdout_dup_fd = dup(1);
-		
+
 		if (stdin_dup_fd == -1)
 			err(1, "dup");
 		if (stdout_dup_fd == -1)
 			err(1, "dup");
-		
+
 
 		STAILQ_FOREACH(eptr, cqhptr, entries) {
 			struct command *cmdptr = eptr->cmdptr;
@@ -152,12 +150,10 @@ exec_pipeline(CmdQueueHead *cqhptr)
 			if (cmdptr->cmd_type == CD) {
 				cmd_pids[i] = -1;
 				ch_dir(argv);
-			}
-			else if (cmdptr->cmd_type == EXIT) {
+			} else if (cmdptr->cmd_type == EXIT) {
 				cmd_pids[i] = -1;
 				exit(ret_val);
-			}
-			else {
+			} else {
 				int pid;
 
 				sigset_t sigs;
@@ -172,8 +168,7 @@ exec_pipeline(CmdQueueHead *cqhptr)
 					/* command has a succesor in the pipeline */
 					pid = exec_piped_cmd(cmdptr, argv);
 					cmd_pids[i] = pid;
-				}
-				else {
+				} else {
 					/* last command in the pipeline */
 					pid = exec_nonpiped_cmd(cmdptr, argv);
 					cmd_pids[i] = pid;
@@ -208,11 +203,11 @@ int
 exec_piped_cmd(struct command *cmdptr, char **argv)
 {
 	int pd[2];
-					
+
 	if (pipe(pd) == -1)
 		err(1, "pipe");
 	int pid = fork();
-	switch(pid) {
+	switch (pid) {
 		case -1:
 			err(1, "fork");
 			break;
@@ -236,14 +231,14 @@ exec_piped_cmd(struct command *cmdptr, char **argv)
 			close(pd[1]);
 			break;
 	}
-	return pid;
+	return (pid);
 }
 
 int
 exec_nonpiped_cmd(struct command *cmdptr, char **argv)
 {
 	int pid = fork();
-	switch(pid) {
+	switch (pid) {
 		case -1:
 			err(1, "fork");
 			break;
@@ -256,7 +251,7 @@ exec_nonpiped_cmd(struct command *cmdptr, char **argv)
 		default:
 			break;
 	}
-	return pid;
+	return (pid);
 }
 
 int

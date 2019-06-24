@@ -70,11 +70,7 @@ CmdQueueEntry * create_cmd_queue_entry(struct command *cmd);
 
 void insert_cmd_queue(CmdQueueHead *hptr, CmdQueueEntry *eptr);
 
-void shallow_destroy_cmd_queue(CmdQueueHead *hptr);
-
 void destroy_cmd_queue(CmdQueueHead *hptr);
-
-struct command ** cmd_queue_to_array(CmdQueueHead *hptr);
 
 void destroy_cmd(struct command *cmdp);
 

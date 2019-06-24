@@ -111,23 +111,6 @@ insert_cmd_queue(CmdQueueHead *hptr, CmdQueueEntry *eptr)
 }
 
 void
-shallow_destroy_cmd_queue(CmdQueueHead *hptr)
-{
-	CmdQueueEntry *e1, *e2;
-
-	e1 = STAILQ_FIRST(hptr);
-
-	while (e1 != NULL) {
-		e2 = STAILQ_NEXT(e1, entries);
-		free(e1);
-		e1 = e2;
-	}
-
-	STAILQ_INIT(hptr);
-	free(hptr);
-}
-
-void
 destroy_cmd_queue(CmdQueueHead *hptr)
 {
 	CmdQueueEntry *e1, *e2;
@@ -144,30 +127,6 @@ destroy_cmd_queue(CmdQueueHead *hptr)
 
 	STAILQ_INIT(hptr);
 	free(hptr);
-}
-
-struct command **
-cmd_queue_to_array(CmdQueueHead *hptr)
-{
-	struct command **cmdptrptr;
-	int len = 1;
-	int offs = 0;
-	CmdQueueEntry *eptr;
-
-	STAILQ_FOREACH(eptr, hptr, entries) { len++; }
-
-	cmdptrptr = malloc(len * sizeof (struct command *));
-	if (!cmdptrptr) {
-		err(1, "malloc");
-	}
-
-	STAILQ_FOREACH(eptr, hptr, entries) {
-		*(cmdptrptr + offs) = eptr->cmdptr;
-		offs++;
-	}
-	*(cmdptrptr + offs) = NULL;
-
-	return (cmdptrptr);
 }
 
 void

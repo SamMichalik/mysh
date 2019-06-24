@@ -25,48 +25,6 @@ int ch_dir(char **args);
 
 void exec_pipeline(CmdQueueHead *cmdqhptr);
 
-// void
-// exec_cmds(struct command **cmdv)
-// {
-// 	if (cmdv != NULL) {
-// 		while (*cmdv != NULL) {
-// 			/*
-// 			 * Count and relocate args so that cmd name is 1st.
-// 			 * This is provisional.
-// 			 */
-// 			int argc = 0;
-// 			char **args;
-// 			struct command *cmdptr = *cmdv;
-
-// 			if (cmdptr->args != NULL) {
-// 				args = cmdptr->args;
-// 				while (*(args + argc) != NULL) { argc++; }
-// 			}
-// 			char **argv = malloc((argc + 2) * sizeof (char *)); /* cmd + argv + NULL */
-// 			if (!argv) {
-// 				err(1, "malloc");
-// 			}
-// 			*argv = cmdptr->name;
-// 			for (int i = 0; i < argc; i++) {
-// 				*(argv + i + 1) = *(args + i);
-// 			}
-// 			*(argv + argc + 1) = NULL;
-
-// 			/* execute the command */
-// 			ret_val = cmdptr->executioner(cmdptr, argv);
-
-// 			/* release memory referenced by command contents */
-// 			destroy_cmd(cmdptr);
-// 			/* release the command structure */
-// 			free(cmdptr);
-// 			/* release the argument vector */
-// 			free(argv);
-
-// 			cmdv++;
-// 		}
-// 	}
-// }
-
 char **
 get_execvp_args(struct command *cmdptr)
 {
@@ -157,9 +115,6 @@ exec_cmds(PipelineQueueHead *pqhptr)
             /* each entry is a pipeline of commands */
             CmdQueueHead *cqhptr = eptr->pipeptr;
             exec_pipeline(cqhptr);
-            /* release resources occupied by the command queue */
-            //destroy_cmd_queue(cqhptr);
-            //free(cqhptr);
         }
     }
 }

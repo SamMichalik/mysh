@@ -43,14 +43,12 @@ extern int lineno;
 %type <charptr> cmd_name
 %type <pqh_ptr> line
 
-//%destructor { destroy_cmd_queue($$); } cmd_seq
-
 %%
 
 start:	line 
 	{ 
 		exec_cmds($1);
-		free($1);
+        destroy_pipeline_queue($1);
 	}
 
 line:   EOL
@@ -59,14 +57,10 @@ line:   EOL
 	}
 	|	cmd_seq SEMICOLON EOL
 	{
-		// $$ = cmd_queue_to_array($1);
-		// shallow_destroy_cmd_queue($1);
         $$ = $1;
 	}
 	|	cmd_seq EOL
 	{
-		// $$ = cmd_queue_to_array($1);
-		// shallow_destroy_cmd_queue($1);
         $$ = $1;
 	}
 
@@ -121,6 +115,7 @@ base_cmd: cmd_name
 		if (!cmdptr)
 			err(1, "malloc");
         init_cmd(cmdptr, $1, GENERAL);
+        free($1);
 		$$ = cmdptr;
 	}
 	| cmd_name args_seq
@@ -128,9 +123,10 @@ base_cmd: cmd_name
 		struct command *cmdptr = malloc(sizeof(struct command));
 		if (!cmdptr)
 			err(1, "malloc");
-		cmdptr->args = string_queue_to_array($2);
         init_cmd(cmdptr, $1, GENERAL);
+        cmdptr->args = string_queue_to_array($2);
 		shallow_destroy_string_queue($2);
+        free($1);
 		$$ = cmdptr;
 	}
 	| INTERNAL
@@ -138,7 +134,6 @@ base_cmd: cmd_name
 		struct command *cmdptr = malloc(sizeof(struct command));
 		if (!cmdptr)
 			err(1, "malloc");
-		cmdptr->args = NULL;
 		switch ($1) {
 			case CD:
                 init_cmd(cmdptr, "cd", CD);
@@ -155,8 +150,6 @@ base_cmd: cmd_name
 		if (!cmdptr)
 			err(1, "malloc");
 
-		cmdptr->args = string_queue_to_array($2);
-		shallow_destroy_string_queue($2);
 		switch ($1) {
 			case CD:
 				init_cmd(cmdptr, "cd", CD);
@@ -165,6 +158,8 @@ base_cmd: cmd_name
 				init_cmd(cmdptr, "exit", EXIT);
 				break;
 		}
+        cmdptr->args = string_queue_to_array($2);
+		shallow_destroy_string_queue($2);
 		$$ = cmdptr;
 	}
 

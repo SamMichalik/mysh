@@ -173,16 +173,17 @@ cmd_queue_to_array(CmdQueueHead *hptr)
 void
 destroy_cmd(struct command *cmdp)
 {
-	free(cmdp->name);
-
-	char **argv = cmdp->args;
 	if (cmdp->args != NULL) {
+        char **argv = cmdp->args;
 		while (*argv != NULL) {
 			free(*argv);
 			argv++;
 		}
+        free(cmdp->args);
 	}
-
+    if (cmdp->name) {
+        free(cmdp->name);
+    }
     if (cmdp->ldir) {
         free(cmdp->ldir);
     }
@@ -192,8 +193,6 @@ destroy_cmd(struct command *cmdp)
     if (cmdp->rrdir) {
         free(cmdp->rrdir);
     }
-
-	free(cmdp->args);
 }
 
 int
@@ -236,4 +235,22 @@ void
 insert_pipeline_queue(PipelineQueueHead *hptr, PipelineQueueEntry *eptr)
 {
 	STAILQ_INSERT_TAIL(hptr, eptr, entries);
+}
+
+void
+destroy_pipeline_queue(PipelineQueueHead *hptr)
+{
+    PipelineQueueEntry *e1, *e2;
+
+	e1 = STAILQ_FIRST(hptr);
+
+	while (e1 != NULL) {
+		e2 = STAILQ_NEXT(e1, entries);
+		destroy_cmd_queue(e1->pipeptr);
+		free(e1);
+		e1 = e2;
+	}
+
+	STAILQ_INIT(hptr);
+	free(hptr);
 }

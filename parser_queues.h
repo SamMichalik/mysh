@@ -90,4 +90,6 @@ PipelineQueueEntry * create_pipeline_queue_entry(CmdQueueHead * cmdqueue);
 
 void insert_pipeline_queue(PipelineQueueHead * hptr, PipelineQueueEntry * eptr);
 
+void destroy_pipeline_queue(PipelineQueueHead *hptr);
+
 #endif /* _PARSER_QUEUES_H */

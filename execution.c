@@ -157,7 +157,9 @@ exec_cmds(PipelineQueueHead *pqhptr)
             /* each entry is a pipeline of commands */
             CmdQueueHead *cqhptr = eptr->pipeptr;
             exec_pipeline(cqhptr);
-            // release resources ?
+            /* release resources occupied by the command queue */
+            //destroy_cmd_queue(cqhptr);
+            //free(cqhptr);
         }
     }
 }
@@ -261,6 +263,8 @@ exec_pipeline(CmdQueueHead *cqhptr)
                 if (sigprocmask(SIG_SETMASK, &sigs, NULL) == -1)
 				err(1, "sigprocmask");
             }
+
+            free(argv);
         }
 
         /* here we would like to wait for all the child processes */

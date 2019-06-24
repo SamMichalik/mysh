@@ -60,13 +60,13 @@ void
 init_cmd(Cmd *cmdptr, char *name, int cmd_type)
 {
     if (cmdptr) {
-        char *s = strdup(name);
-        if (!s)
+        cmdptr->name = strdup(name);
+        if (!cmdptr->name)
             err(1, "strdup");
-        cmdptr->name = s;
         cmdptr->cmd_type = cmd_type;
         cmdptr->ldir = NULL;
         cmdptr->rdir = NULL;
         cmdptr->rrdir = NULL;
+        cmdptr->args = NULL;
     }
 }

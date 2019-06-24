@@ -15,96 +15,247 @@
 #include "lex.yy.h"
 #include "mysh.h"
 #include "parser_queues.h"
+#include "command.h"
 
 char * prep_line(char *line);
 
 int cd_home(char *cwd);
 
-void
-exec_cmds(struct command **cmdv)
+int ch_dir(char **args);
+
+void exec_pipeline(CmdQueueHead *cmdqhptr);
+
+int exec_piped_cmd(struct command *cmdptr, char **argv);
+
+int exec_nonpiped_cmd(struct command *cmdptr, char **argv);
+
+char **
+get_execvp_args(struct command *cmdptr)
 {
-	if (cmdv != NULL) {
-		while (*cmdv != NULL) {
-			/*
-			 * Count and relocate args so that cmd name is 1st.
-			 * This is provisional.
-			 */
-			int argc = 0;
-			char **args;
-			struct command *cmdptr = *cmdv;
+	if (cmdptr != NULL) {
+		char **args;
+		char **argv;
+		int argc = 0;
 
-			if (cmdptr->args != NULL) {
-				args = cmdptr->args;
-				while (*(args + argc) != NULL) { argc++; }
-			}
-			char **argv = malloc((argc + 2) * sizeof (char *)); /* cmd + argv + NULL */
-			if (!argv) {
-				err(1, "malloc");
-			}
-			*argv = cmdptr->name;
-			for (int i = 0; i < argc; i++) {
-				*(argv + i + 1) = *(args + i);
-			}
-			*(argv + argc + 1) = NULL;
+		/* compute the number of arguments */
+		if (cmdptr->args != NULL) {
+			args = cmdptr->args;
+			while (*(args + argc) != NULL) { argc++; }
+		}
+		/* allocate space for the argument vector */
+		argv = malloc((argc + 2) * sizeof (char *));
+		if (!argv)
+			err(1, "malloc");
+		/* set the values of the array */
+		if (!cmdptr->name)
+			return (NULL);
 
-			/* execute the command */
-			ret_val = cmdptr->executioner(cmdptr->name, argv);
+		*argv = cmdptr->name;
+		for (int i = 0; i < argc; i++) {
+			*(argv + i + 1) = *(args + i);
+		}
+		*(argv + argc + 1) = NULL;
 
-			/* release memory referenced by command contents */
-			destroy_cmd(cmdptr);
-			/* release the command structure */
-			free(cmdptr);
-			/* release the argument vector */
-			free(argv);
+		return (argv);
+	}
+	return (NULL);
+}
 
-			cmdv++;
+void
+redirect(struct command *cmdptr)
+{
+	if (cmdptr->ldir != NULL) {
+		if (close(0) < 0) {
+			err(1, "close");
+		}
+		if (open(cmdptr->ldir, O_RDONLY) < 0) {
+			err(1, "open");
+		}
+	}
+
+	if (cmdptr->rdir != NULL) {
+		if (close(1) < 0) {
+			err(1, "close");
+		}
+		if (open(cmdptr->rdir, O_WRONLY | O_CREAT | O_TRUNC, 0666) < 0) {
+			err(1, "open");
+		}
+	} else if (cmdptr->rrdir != NULL) {
+		if (close(1) < 0) {
+			err(1, "close");
+		}
+		if (open(cmdptr->rrdir, O_WRONLY | O_CREAT | O_APPEND, 0666) < 0) {
+			err(1, "open");
 		}
 	}
 }
 
-int
-general_executioner(char *cmd, char **args)
+void
+restore_std_io(int stdin_fd, int stdout_fd)
 {
-	int pid, ret_val, i;
+	if (close(0) == -1)
+		err(1, "close");
+	if (dup(stdin_fd) == -1)
+		err(1, "dup");
+	if (close(stdin_fd) == -1)
+		err(1, "close");
 
-	sigset_t sigs;
-	if (sigemptyset(&sigs) == -1)
-		err(1, "sigemptyset");
-	if (sigaddset(&sigs, SIGINT) == -1)
-		err(1, "sigaddset");
+	if (close(1) == -1)
+		err(1, "close");
+	if (dup(stdout_fd) == -1)
+		err(1, "dup");
+	if (close(stdout_fd) == -1)
+		err(1, "close");
+}
 
+void
+exec_cmds(PipelineQueueHead *pqhptr)
+{
+	if (pqhptr != NULL) {
+		PipelineQueueEntry *eptr;
 
-	if (sigprocmask(SIG_UNBLOCK, &sigs, NULL) == -1)
-		err(1, "sigprocmask");
-	switch (pid = fork()) {
-		case -1:
-			err(1, "fork");
-			break;
-
-		case 0:
-			execvp(cmd, args);
-			fprintf(stderr, "mysh: %s: No such file or directory\n", cmd);
-			exit(127);
-			break;
-
-		default:
-			if (sigprocmask(SIG_SETMASK, &sigs, NULL) == -1)
-				err(1, "sigprocmask");
-			if (wait(&i) == -1)
-				err(1, "wait");
-			if (WIFSIGNALED(i) != 0) {
-				fprintf(stderr, "Killed by signal %d\n", WTERMSIG(i));
-				ret_val = 128 + WTERMSIG(i);
-			} else {
-				ret_val = WEXITSTATUS(i);
-			}
-			break;
+		STAILQ_FOREACH(eptr, pqhptr, entries) {
+			/* each entry is a pipeline of commands */
+			CmdQueueHead *cqhptr = eptr->pipeptr;
+			exec_pipeline(cqhptr);
+		}
 	}
-	return (ret_val);
+}
+
+void
+exec_pipeline(CmdQueueHead *cqhptr)
+{
+	if (cqhptr != NULL) {
+		CmdQueueEntry *eptr;
+		int pipeline_len = get_queue_len(cqhptr);
+		int cmd_pids[pipeline_len];
+		int i = -1;
+		int stat_loc;
+
+		int stdin_dup_fd = dup(0);
+		int stdout_dup_fd = dup(1);
+
+		if (stdin_dup_fd == -1)
+			err(1, "dup");
+		if (stdout_dup_fd == -1)
+			err(1, "dup");
+
+
+		STAILQ_FOREACH(eptr, cqhptr, entries) {
+			struct command *cmdptr = eptr->cmdptr;
+
+			char **argv = get_execvp_args(cmdptr);
+			i++;
+
+			if (cmdptr->cmd_type == CD) {
+				cmd_pids[i] = -1;
+				ch_dir(argv);
+			} else if (cmdptr->cmd_type == EXIT) {
+				cmd_pids[i] = -1;
+				exit(ret_val);
+			} else {
+				int pid;
+
+				sigset_t sigs;
+				if (sigemptyset(&sigs) == -1)
+					err(1, "sigemptyset");
+				if (sigaddset(&sigs, SIGINT) == -1)
+					err(1, "sigaddset");
+				if (sigprocmask(SIG_UNBLOCK, &sigs, NULL) == -1)
+					err(1, "sigprocmask");
+
+				if (eptr->entries.stqe_next != NULL) {
+					/* command has a succesor in the pipeline */
+					pid = exec_piped_cmd(cmdptr, argv);
+					cmd_pids[i] = pid;
+				} else {
+					/* last command in the pipeline */
+					pid = exec_nonpiped_cmd(cmdptr, argv);
+					cmd_pids[i] = pid;
+				}
+				if (sigprocmask(SIG_SETMASK, &sigs, NULL) == -1)
+				err(1, "sigprocmask");
+			}
+
+			free(argv);
+		}
+
+		/* here we would like to wait for all the child processes */
+		for (int i = 0; i < pipeline_len; i++) {
+			if (cmd_pids[i] != -1) {
+				stat_loc = 0;
+				if (waitpid(cmd_pids[i], &stat_loc, 0) == -1)
+					err(1, "waitpid");
+				if (WIFSIGNALED(stat_loc) != 0) {
+					fprintf(stderr, "Killed by signal %d.\n", WTERMSIG(stat_loc));
+					ret_val = 128 + WTERMSIG(stat_loc);
+				} else {
+					ret_val = WEXITSTATUS(stat_loc);
+				}
+			}
+		}
+
+		restore_std_io(stdin_dup_fd, stdout_dup_fd);
+	}
 }
 
 int
-cd_executioner(char *cmd, char **args)
+exec_piped_cmd(struct command *cmdptr, char **argv)
+{
+	int pd[2];
+
+	if (pipe(pd) == -1)
+		err(1, "pipe");
+	int pid = fork();
+	switch (pid) {
+		case -1:
+			err(1, "fork");
+			break;
+		case 0:
+			/* child / producer */
+			close(1);
+			dup(pd[1]);
+			close(pd[0]);
+			close(pd[1]);
+			/* execute command */
+			redirect(cmdptr);
+			execvp(cmdptr->name, argv);
+			fprintf(stderr, "mysh: %s: No such file or directory\n", cmdptr->name);
+			exit(127);
+			break;
+		default:
+			/* parent / consumer */
+			close(0);
+			dup(pd[0]);
+			close(pd[0]);
+			close(pd[1]);
+			break;
+	}
+	return (pid);
+}
+
+int
+exec_nonpiped_cmd(struct command *cmdptr, char **argv)
+{
+	int pid = fork();
+	switch (pid) {
+		case -1:
+			err(1, "fork");
+			break;
+		case 0:
+			redirect(cmdptr);
+			execvp(cmdptr->name, argv);
+			fprintf(stderr, "mysh: %s: No such file or directory\n", cmdptr->name);
+			exit(127);
+			break;
+		default:
+			break;
+	}
+	return (pid);
+}
+
+int
+ch_dir(char **args)
 {
 	int ret_val = 0;
 
@@ -160,12 +311,6 @@ cd_executioner(char *cmd, char **args)
 
 	free(cwd);
 	return (ret_val);
-}
-
-int
-exit_executioner(char *cmd, char **args)
-{
-	exit(ret_val);
 }
 
 void
@@ -230,7 +375,9 @@ execute_script(char *scrpath)
 
 			lineno++;
 			if (check_line_length(line)) {
-				execute_line(line);
+				char *nl = str_cat(line, "\n");
+				execute_line(nl);
+				free(nl);
 			}
 			free(line);
 			line = (char *)NULL;

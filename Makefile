@@ -1,5 +1,5 @@
 O_DEBUG = mysh.debug
-C_FILES = execution.c parser_queues.c util.c
+C_FILES = execution.c parser_queues.c util.c command.c
 
 ifeq (`uname`,Darwin)
 	FLEX = -ll

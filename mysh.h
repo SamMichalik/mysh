@@ -3,20 +3,14 @@
 
 #include "parser_queues.h"
 
-#define	BUFFSIZE    1000
+#define	BUFFSIZE	1000
 #define	LINELIMIT	32000
 
 /*
  *	execution.c - Execution function declarations
  */
 
-void exec_cmds(struct command **cmdv);
-
-int general_executioner(char *cmd, char **args);
-
-int cd_executioner(char *cmd, char **args);
-
-int exit_executioner(char *cmd, char **args);
+void exec_cmds(PipelineQueueHead * pqhptr);
 
 void execute_script(char *scrpath);
 

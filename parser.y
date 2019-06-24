@@ -7,6 +7,7 @@
 #include "lex.yy.h"
 #include "parser_queues.h"
 #include "mysh.h"
+#include "command.h"
 
 void yyerror(char *s);
 
@@ -16,6 +17,7 @@ extern int lineno;
 %}
 
 %union{
+    struct pipeline_queue_head *pqh_ptr;    /* alias PipelineQueueHead */
     struct string_queue_head *sqh_ptr;     /* alias StringQueueHead */
     struct cmd_queue_head *cqh_ptr;        /* alias CmdQueueHead */
     struct command *cmdptr;
@@ -31,21 +33,24 @@ extern int lineno;
 %token PIPE
 %token LREDIR
 %token RREDIR
+%token RREDIR_APPEND
 
 %type <sqh_ptr> args_seq
-%type <cqh_ptr> cmd_seq
-%type <cmdptr> cmd
+%type <pqh_ptr> cmd_seq
+%type <cqh_ptr> pipe_cmd
+%type <cmdptr> base_cmd
+%type <cmdptr> redir_cmd
 %type <charptr> cmd_name
-%type <cmdptrptr> line
-
-%destructor { destroy_cmd_queue($$); } cmd_seq
+%type <pqh_ptr> line
 
 %%
 
 start:	line 
-	{ 
-		exec_cmds($1);
-		free($1);
+	{
+        if ($1 != NULL) {
+            exec_cmds($1);
+            destroy_pipeline_queue($1);    
+        }
 	}
 
 line:   EOL
@@ -54,35 +59,65 @@ line:   EOL
 	}
 	|	cmd_seq SEMICOLON EOL
 	{
-		$$ = cmd_queue_to_array($1);
-		shallow_destroy_cmd_queue($1);
+        $$ = $1;
 	}
 	|	cmd_seq EOL
 	{
-		$$ = cmd_queue_to_array($1);
-		shallow_destroy_cmd_queue($1);
+        $$ = $1;
 	}
 
-cmd_seq: cmd
+cmd_seq: pipe_cmd
 	{
-		CmdQueueEntry *eptr = create_cmd_queue_entry($1);
-		$$ = initialize_cmd_queue(eptr);
+        PipelineQueueEntry *eptr = create_pipeline_queue_entry($1);
+        $$ = initialize_pipeline_queue(eptr);
 	}
-	| cmd_seq SEMICOLON cmd
+	| cmd_seq SEMICOLON pipe_cmd
 	{
-		CmdQueueEntry *eptr = create_cmd_queue_entry($3);
+        PipelineQueueEntry *eptr = create_pipeline_queue_entry($3);
+        insert_pipeline_queue($1, eptr);
+        $$ = $1;
+	}
+
+pipe_cmd: redir_cmd
+    {
+        CmdQueueEntry *eptr = create_cmd_queue_entry($1);
+		$$ = initialize_cmd_queue(eptr);
+    }
+    | pipe_cmd PIPE redir_cmd
+    {
+        CmdQueueEntry *eptr = create_cmd_queue_entry($3);
 		insert_cmd_queue($1, eptr);
 		$$ = $1;
-	}
+    }
 
-cmd: cmd_name
+redir_cmd: base_cmd
+    {
+        $$ = $1;
+    }
+    | redir_cmd RREDIR WORD
+    {
+        $$ = $1;
+        set_rdir($$, $3);
+    }
+    | redir_cmd RREDIR_APPEND WORD
+    {
+        $$ = $1;
+        set_rrdir($$, $3);
+    }
+    | redir_cmd LREDIR WORD
+    {
+        $$ = $1;
+        set_ldir($$, $3);
+    }
+
+
+base_cmd: cmd_name
 	{
 		struct command *cmdptr = malloc(sizeof(struct command));
 		if (!cmdptr)
 			err(1, "malloc");
-		cmdptr->name = $1;
-		cmdptr->args = NULL;
-		cmdptr->executioner = general_executioner;
+        init_cmd(cmdptr, $1, GENERAL);
+        free($1);
 		$$ = cmdptr;
 	}
 	| cmd_name args_seq
@@ -90,10 +125,10 @@ cmd: cmd_name
 		struct command *cmdptr = malloc(sizeof(struct command));
 		if (!cmdptr)
 			err(1, "malloc");
-		cmdptr->name = $1;
-		cmdptr->args = string_queue_to_array($2);
-		cmdptr->executioner = general_executioner;
+        init_cmd(cmdptr, $1, GENERAL);
+        cmdptr->args = string_queue_to_array($2);
 		shallow_destroy_string_queue($2);
+        free($1);
 		$$ = cmdptr;
 	}
 	| INTERNAL
@@ -101,19 +136,12 @@ cmd: cmd_name
 		struct command *cmdptr = malloc(sizeof(struct command));
 		if (!cmdptr)
 			err(1, "malloc");
-		cmdptr->args = NULL;
 		switch ($1) {
 			case CD:
-				cmdptr->name = strdup("cd");
-				if (!(cmdptr->name))
-					err(1, "strdup");
-				cmdptr->executioner = cd_executioner;
+                init_cmd(cmdptr, "cd", CD);
 				break;
 			case EXIT:
-				cmdptr->name = strdup("exit");
-				if (!(cmdptr->name))
-					err(1, "strdup");
-				cmdptr->executioner = exit_executioner;
+				init_cmd(cmdptr, "exit", EXIT);
 				break;
 		}
 		$$ = cmdptr;
@@ -123,22 +151,17 @@ cmd: cmd_name
 		struct command *cmdptr = malloc(sizeof(struct command));
 		if (!cmdptr)
 			err(1, "malloc");
-		cmdptr->args = string_queue_to_array($2);
-		shallow_destroy_string_queue($2);
+
 		switch ($1) {
 			case CD:
-				cmdptr->name = strdup("cd");
-				if (!(cmdptr->name))
-					err(1, "strdup");
-				cmdptr->executioner = cd_executioner;
+				init_cmd(cmdptr, "cd", CD);
 				break;
 			case EXIT:
-				cmdptr->name = strdup("exit");
-				if (!(cmdptr->name))
-					err(1, "strdup");
-				cmdptr->executioner = exit_executioner;
+				init_cmd(cmdptr, "exit", EXIT);
 				break;
 		}
+        cmdptr->args = string_queue_to_array($2);
+		shallow_destroy_string_queue($2);
 		$$ = cmdptr;
 	}
 

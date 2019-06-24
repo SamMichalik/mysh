@@ -3,6 +3,8 @@
 
 #include <sys/queue.h>
 
+#include "command.h"
+
 /*
  *	Structure declarations
  */
@@ -21,15 +23,11 @@ struct cmd_queue_entry {
 	STAILQ_ENTRY(cmd_queue_entry) entries;
 };
 
-struct command {
-	char *name;
-	char **args;
-	int (*executioner)(char *name, char **args);
-};
+STAILQ_HEAD(pipeline_queue_head, pipeline_queue_entry);
 
-enum internal_cmd {
-	CD,
-	EXIT
+struct pipeline_queue_entry {
+	struct cmd_queue_head *pipeptr;
+	STAILQ_ENTRY(pipeline_queue_entry) entries;
 };
 
 /*
@@ -43,6 +41,10 @@ typedef struct string_queue_entry StringQueueEntry;
 typedef struct cmd_queue_head CmdQueueHead;
 
 typedef struct cmd_queue_entry CmdQueueEntry;
+
+typedef struct pipeline_queue_head PipelineQueueHead;
+
+typedef struct pipeline_queue_entry PipelineQueueEntry;
 
 /*
  *	String queue function declarations
@@ -68,12 +70,22 @@ CmdQueueEntry * create_cmd_queue_entry(struct command *cmd);
 
 void insert_cmd_queue(CmdQueueHead *hptr, CmdQueueEntry *eptr);
 
-void shallow_destroy_cmd_queue(CmdQueueHead *hptr);
-
 void destroy_cmd_queue(CmdQueueHead *hptr);
 
-struct command ** cmd_queue_to_array(CmdQueueHead *hptr);
-
 void destroy_cmd(struct command *cmdp);
+
+int get_queue_len(CmdQueueHead *cqhptr);
+
+/*
+ *  Pipeline queue function declarations
+ */
+
+PipelineQueueHead * initialize_pipeline_queue(PipelineQueueEntry *e);
+
+PipelineQueueEntry * create_pipeline_queue_entry(CmdQueueHead * cmdqueue);
+
+void insert_pipeline_queue(PipelineQueueHead * hptr, PipelineQueueEntry * eptr);
+
+void destroy_pipeline_queue(PipelineQueueHead *hptr);
 
 #endif /* _PARSER_QUEUES_H */

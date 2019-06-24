@@ -87,6 +87,8 @@ struct command ** cmd_queue_to_array(CmdQueueHead *hptr);
 
 void destroy_cmd(struct command *cmdp);
 
+int get_queue_len(CmdQueueHead *cqhptr);
+
 /*
  *  Pipeline queue function declarations
  */

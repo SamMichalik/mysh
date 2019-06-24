@@ -195,6 +195,15 @@ destroy_cmd(struct command *cmdp)
 	free(cmdp->args);
 }
 
+int
+get_queue_len(CmdQueueHead *cqhptr)
+{
+    int len = 0;
+    CmdQueueEntry *eptr;
+    STAILQ_FOREACH(eptr, cqhptr, entries) { len++; }
+    return len;
+}
+
 /*
  *  Pipeline queue function definitions
  */

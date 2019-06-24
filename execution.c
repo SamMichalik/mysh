@@ -129,6 +129,24 @@ redirect(struct command *cmdptr)
 }
 
 void
+restore_std_io(int stdin_fd, int stdout_fd)
+{
+    if (close(0) == -1)
+        err(1, "close");
+    if (dup(stdin_fd) == -1)
+        err(1, "dup");
+    if (close(stdin_fd) == -1)
+        err(1, "close");
+
+    if (close(1) == -1)
+        err(1, "close");
+    if (dup(stdout_fd) == -1)
+        err(1, "dup");
+    if (close(stdout_fd) == -1)
+        err(1, "close");
+}
+
+void
 exec_cmds(PipelineQueueHead *pqhptr)
 {
     if (pqhptr != NULL) {
@@ -148,6 +166,11 @@ exec_pipeline(CmdQueueHead *cqhptr)
 {
     if (cqhptr != NULL) {
         CmdQueueEntry *eptr;
+        int pipeline_len = get_queue_len(cqhptr);
+        int cmd_pids[pipeline_len];
+        int i = -1;
+        int stat_loc;
+        
         int stdin_dup_fd = dup(0);
         int stdout_dup_fd = dup(1);
         
@@ -161,23 +184,28 @@ exec_pipeline(CmdQueueHead *cqhptr)
             struct command *cmdptr = eptr->cmdptr;
 
             char **argv = get_execvp_args(cmdptr);
+            i++;
 
             if (cmdptr->cmd_type == CD) {
+                cmd_pids[i] = -1;
                 ch_dir(argv);
             }
             else if (cmdptr->cmd_type == EXIT) {
+                cmd_pids[i] = -1;
                 exit(ret_val);
             }
             else {
+                int pid;
+
                 if (eptr->entries.stqe_next != NULL) {
-                    fprintf(stderr, "detected inside pipeline\n");
                     /* command has a succesor in the pipeline */
                     int pd[2];
                     
                     if (pipe(pd) == -1)
                         err(1, "pipe");
                     
-                    switch(fork()) {
+                    pid = fork();
+                    switch(pid) {
                         case -1:
                             err(1, "fork");
                             break;
@@ -199,13 +227,14 @@ exec_pipeline(CmdQueueHead *cqhptr)
                             dup(pd[0]);
                             close(pd[0]);
                             close(pd[1]);
+                            cmd_pids[i] = pid;
                             break;
                     }
                 }
                 else {
-                    fprintf(stderr, "detected no pipeline\n");
                     /* last command in the pipeline */
-                    switch(fork()) {
+                    pid = fork();
+                    switch(pid) {
                         case -1:
                             err(1, "fork");
                             break;
@@ -216,18 +245,29 @@ exec_pipeline(CmdQueueHead *cqhptr)
                             exit(127);
                             break;
                         default:
+                            cmd_pids[i] = pid;
                             break;
                     }
                 }
             }
         }
 
-        close(0);
-        dup(stdin_dup_fd);
-        close(stdin_dup_fd);
-        close(1);
-        dup(stdout_dup_fd);
-        close(stdout_dup_fd);
+        /* here we would like to wait for all the child processes */
+        for (int i = 0; i < pipeline_len; i++) {
+            if (cmd_pids[i] != -1) {
+                stat_loc = 0;
+                if (waitpid(cmd_pids[i], &stat_loc, 0) == -1)
+                    err(1, "waitpid");
+                if (WIFSIGNALED(stat_loc) != 0) {
+				    fprintf(stderr, "Killed by signal %d\n", WTERMSIG(stat_loc));
+				    ret_val = 128 + WTERMSIG(stat_loc);
+			    } else {
+				    ret_val = WEXITSTATUS(stat_loc);
+			    }
+            }
+        }
+
+        restore_std_io(stdin_dup_fd, stdout_dup_fd);
     }
 }
 

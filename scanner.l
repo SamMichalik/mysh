@@ -24,6 +24,6 @@
 \'.*\'          { yylval.charptr = yytext; return WORD; }
 [ \t]+          { /* ignore whitespaces */}
 #[^\n]*         { /* ignore comments */ }
-[^ \t\n#;]+     { yylval.charptr = yytext; return WORD; }
+[^ ><\t\n#;]+     { yylval.charptr = yytext; return WORD; }
 
 %%

@@ -25,6 +25,10 @@ int ch_dir(char **args);
 
 void exec_pipeline(CmdQueueHead *cmdqhptr);
 
+int exec_piped_cmd(struct command *cmdptr, char **argv);
+
+int exec_nonpiped_cmd(struct command *cmdptr, char **argv);
+
 char **
 get_execvp_args(struct command *cmdptr)
 {
@@ -129,6 +133,7 @@ exec_pipeline(CmdQueueHead *cqhptr)
         int i = -1;
         int stat_loc;
         
+        /* store std in & out for later as it might be replaced by pipe file descs. */
         int stdin_dup_fd = dup(0);
         int stdout_dup_fd = dup(1);
         
@@ -165,55 +170,13 @@ exec_pipeline(CmdQueueHead *cqhptr)
 
                 if (eptr->entries.stqe_next != NULL) {
                     /* command has a succesor in the pipeline */
-                    int pd[2];
-                    
-                    if (pipe(pd) == -1)
-                        err(1, "pipe");
-                    
-                    pid = fork();
-                    switch(pid) {
-                        case -1:
-                            err(1, "fork");
-                            break;
-                        case 0:
-                            /* child / producer */
-                            close(1);
-                            dup(pd[1]);
-                            close(pd[0]);
-                            close(pd[1]);
-                            /* execute command */
-                            redirect(cmdptr);
-                            execvp(cmdptr->name, argv);
-			                fprintf(stderr, "mysh: %s: No such file or directory\n", cmdptr->name);
-                			exit(127);
-                            break;
-                        default:
-                            /* parent / consumer */
-                            close(0);
-                            dup(pd[0]);
-                            close(pd[0]);
-                            close(pd[1]);
-                            cmd_pids[i] = pid;
-                            break;
-                    }
+                    pid = exec_piped_cmd(cmdptr, argv);
+                    cmd_pids[i] = pid;
                 }
                 else {
                     /* last command in the pipeline */
-                    pid = fork();
-                    switch(pid) {
-                        case -1:
-                            err(1, "fork");
-                            break;
-                        case 0:
-                            redirect(cmdptr);
-                            execvp(cmdptr->name, argv);
-                            fprintf(stderr, "mysh: %s: No such file or directory\n", cmdptr->name);
-                            exit(127);
-                            break;
-                        default:
-                            cmd_pids[i] = pid;
-                            break;
-                    }
+                    pid = exec_nonpiped_cmd(cmdptr, argv);
+                    cmd_pids[i] = pid;
                 }
                 if (sigprocmask(SIG_SETMASK, &sigs, NULL) == -1)
 				err(1, "sigprocmask");
@@ -239,6 +202,61 @@ exec_pipeline(CmdQueueHead *cqhptr)
 
         restore_std_io(stdin_dup_fd, stdout_dup_fd);
     }
+}
+
+int
+exec_piped_cmd(struct command *cmdptr, char **argv)
+{
+    int pd[2];
+                    
+    if (pipe(pd) == -1)
+        err(1, "pipe");
+    int pid = fork();
+    switch(pid) {
+        case -1:
+            err(1, "fork");
+            break;
+        case 0:
+            /* child / producer */
+            close(1);
+            dup(pd[1]);
+            close(pd[0]);
+            close(pd[1]);
+            /* execute command */
+            redirect(cmdptr);
+            execvp(cmdptr->name, argv);
+			fprintf(stderr, "mysh: %s: No such file or directory\n", cmdptr->name);
+            exit(127);
+            break;
+        default:
+            /* parent / consumer */
+            close(0);
+            dup(pd[0]);
+            close(pd[0]);
+            close(pd[1]);
+            break;
+    }
+    return pid;
+}
+
+int
+exec_nonpiped_cmd(struct command *cmdptr, char **argv)
+{
+    int pid = fork();
+    switch(pid) {
+        case -1:
+            err(1, "fork");
+            break;
+        case 0:
+            redirect(cmdptr);
+            execvp(cmdptr->name, argv);
+            fprintf(stderr, "mysh: %s: No such file or directory\n", cmdptr->name);
+            exit(127);
+            break;
+        default:
+            break;
+    }
+    return pid;
 }
 
 int

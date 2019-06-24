@@ -46,9 +46,11 @@ extern int lineno;
 %%
 
 start:	line 
-	{ 
-		exec_cmds($1);
-        destroy_pipeline_queue($1);
+	{
+        if ($1 != NULL) {
+            exec_cmds($1);
+            destroy_pipeline_queue($1);    
+        }
 	}
 
 line:   EOL

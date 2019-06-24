@@ -16,3 +16,6 @@ debug:	mysh.c parser.y scanner.l $(C_FILES)
 		bison -d parser.y
 		flex --header-file=lex.yy.h scanner.l
 		cc -g -o $(O_DEBUG) mysh.c $(C_FILES) parser.tab.c lex.yy.c $(FLEX) -lreadline
+
+clean:
+		rm -f mysh mysh.debug

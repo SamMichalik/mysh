@@ -26,8 +26,8 @@ struct cmd_queue_entry {
 STAILQ_HEAD(pipeline_queue_head, pipeline_queue_entry);
 
 struct pipeline_queue_entry {
-    struct cmd_queue_head *pipeptr;
-    STAILQ_ENTRY(pipeline_queue_entry) entries;
+	struct cmd_queue_head *pipeptr;
+	STAILQ_ENTRY(pipeline_queue_entry) entries;
 };
 
 /*

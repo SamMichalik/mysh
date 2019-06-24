@@ -3,7 +3,7 @@
 
 #include "parser_queues.h"
 
-#define	BUFFSIZE    1000
+#define	BUFFSIZE	1000
 #define	LINELIMIT	32000
 
 /*

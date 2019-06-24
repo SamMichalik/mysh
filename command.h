@@ -4,16 +4,16 @@
 enum cmd_type {
 	CD,
 	EXIT,
-    GENERAL
+	GENERAL
 };
 
 struct command {
 	char *name;
 	char **args;
-    char *ldir;
-    char *rdir;
-    char *rrdir;
-    int cmd_type;
+	char *ldir;
+	char *rdir;
+	char *rrdir;
+	int cmd_type;
 };
 
 typedef struct command Cmd;

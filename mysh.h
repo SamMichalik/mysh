@@ -10,13 +10,9 @@
  *	execution.c - Execution function declarations
  */
 
-void exec_cmds(struct command **cmdv);
+void exec_cmds(PipelineQueueHead * pqhptr);
 
 int general_executioner(struct command *cmdptr, char **args);
-
-int cd_executioner(struct command *cmdptr, char **args);
-
-int exit_executioner(struct command *cmdptr, char **args);
 
 void execute_script(char *scrpath);
 
@@ -41,5 +37,11 @@ int check_line_length(char *line);
 int ret_val;
 
 int lineno;
+
+enum cmd_type {
+	CD,
+	EXIT,
+    GENERAL
+};
 
 #endif /* _MYSH_H */

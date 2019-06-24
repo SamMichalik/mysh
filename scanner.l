@@ -14,10 +14,10 @@
 ^(cd|\'cd\'|\"cd\") 				{ yylval.int_cmd = CD; return INTERNAL; }
 ^(exit|\'exit\'|\"exit\") 			{ yylval.int_cmd = EXIT; return INTERNAL; }
 ";"/[ \t]*(cd|\'cd\'|\"cd\"|exit|\'exit\'|\"exit\")    { BEGIN INTERN; return SEMICOLON; }
-"|"				{ fprintf(stderr, "(defualt rule matched) "); return PIPE; }
-">"				{ fprintf(stderr, "(defualt rule matched) "); return RREDIR; }
-">>"				{ fprintf(stderr, "(defualt rule matched) "); return RREDIR_APPEND; }
-"<"				{ fprintf(stderr, "(defualt rule matched) "); return LREDIR; }
+"|"				{ return PIPE; }
+">"				{ return RREDIR; }
+">>"			{ return RREDIR_APPEND; }
+"<"				{ return LREDIR; }
 ";"             { return SEMICOLON; }
 "\n"            { return EOL; }
 \".*\"          { yylval.charptr = yytext; return WORD; }

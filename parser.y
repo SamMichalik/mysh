@@ -16,6 +16,7 @@ extern int lineno;
 %}
 
 %union{
+    struct pipeline_queue_head *pqh_ptr;    /* alias PipelineQueueHead */
     struct string_queue_head *sqh_ptr;     /* alias StringQueueHead */
     struct cmd_queue_head *cqh_ptr;        /* alias CmdQueueHead */
     struct command *cmdptr;
@@ -34,13 +35,14 @@ extern int lineno;
 %token RREDIR_APPEND
 
 %type <sqh_ptr> args_seq
-%type <cqh_ptr> cmd_seq
-%type <cmdptr> cmd
-%type <cmdptr> cmd_
+%type <pqh_ptr> cmd_seq
+%type <cqh_ptr> pipe_cmd
+%type <cmdptr> base_cmd
+%type <cmdptr> redir_cmd
 %type <charptr> cmd_name
-%type <cmdptrptr> line
+%type <pqh_ptr> line
 
-%destructor { destroy_cmd_queue($$); } cmd_seq
+//%destructor { destroy_cmd_queue($$); } cmd_seq
 
 %%
 
@@ -56,32 +58,46 @@ line:   EOL
 	}
 	|	cmd_seq SEMICOLON EOL
 	{
-		$$ = cmd_queue_to_array($1);
-		shallow_destroy_cmd_queue($1);
+		// $$ = cmd_queue_to_array($1);
+		// shallow_destroy_cmd_queue($1);
+        $$ = $1;
 	}
 	|	cmd_seq EOL
 	{
-		$$ = cmd_queue_to_array($1);
-		shallow_destroy_cmd_queue($1);
+		// $$ = cmd_queue_to_array($1);
+		// shallow_destroy_cmd_queue($1);
+        $$ = $1;
 	}
 
-cmd_seq: cmd_
+cmd_seq: pipe_cmd
 	{
-		CmdQueueEntry *eptr = create_cmd_queue_entry($1);
-		$$ = initialize_cmd_queue(eptr);
+        PipelineQueueEntry *eptr = create_pipeline_queue_entry($1);
+        $$ = initialize_pipeline_queue(eptr);
 	}
-	| cmd_seq SEMICOLON cmd_
+	| cmd_seq SEMICOLON pipe_cmd
 	{
-		CmdQueueEntry *eptr = create_cmd_queue_entry($3);
+        PipelineQueueEntry *eptr = create_pipeline_queue_entry($3);
+        insert_pipeline_queue($1, eptr);
+        $$ = $1;
+	}
+
+pipe_cmd: redir_cmd
+    {
+        CmdQueueEntry *eptr = create_cmd_queue_entry($1);
+		$$ = initialize_cmd_queue(eptr);
+    }
+    | pipe_cmd PIPE redir_cmd
+    {
+        CmdQueueEntry *eptr = create_cmd_queue_entry($3);
 		insert_cmd_queue($1, eptr);
 		$$ = $1;
-	}
+    }
 
-cmd_: cmd
+redir_cmd: base_cmd
     {
         $$ = $1;
     }
-    | cmd_ RREDIR WORD
+    | redir_cmd RREDIR WORD
     {
         $$ = $1;
         if ($$->rrdir) {
@@ -97,7 +113,7 @@ cmd_: cmd
 			err(1, "strdup");
         $$->rdir = s;
     }
-    | cmd_ RREDIR_APPEND WORD
+    | redir_cmd RREDIR_APPEND WORD
     {
         $$ = $1;
         if ($$->rrdir) {
@@ -113,7 +129,7 @@ cmd_: cmd
 			err(1, "strdup");
         $$->rrdir = s;
     }
-    | cmd_ LREDIR WORD
+    | redir_cmd LREDIR WORD
     {
         $$ = $1;
         if ($$->ldir) {
@@ -126,14 +142,14 @@ cmd_: cmd
     }
 
 
-cmd: cmd_name
+base_cmd: cmd_name
 	{
 		struct command *cmdptr = malloc(sizeof(struct command));
 		if (!cmdptr)
 			err(1, "malloc");
 		cmdptr->name = $1;
 		cmdptr->args = NULL;
-		cmdptr->executioner = general_executioner;
+		cmdptr->cmd_type = GENERAL;
         cmdptr->ldir = NULL;
         cmdptr->rdir = NULL;
         cmdptr->rrdir = NULL;
@@ -146,7 +162,7 @@ cmd: cmd_name
 			err(1, "malloc");
 		cmdptr->name = $1;
 		cmdptr->args = string_queue_to_array($2);
-		cmdptr->executioner = general_executioner;
+        cmdptr->cmd_type = GENERAL;
         cmdptr->ldir = NULL;
         cmdptr->rdir = NULL;
         cmdptr->rrdir = NULL;
@@ -164,13 +180,13 @@ cmd: cmd_name
 				cmdptr->name = strdup("cd");
 				if (!(cmdptr->name))
 					err(1, "strdup");
-				cmdptr->executioner = cd_executioner;
+				cmdptr->cmd_type = CD;
 				break;
 			case EXIT:
 				cmdptr->name = strdup("exit");
 				if (!(cmdptr->name))
 					err(1, "strdup");
-				cmdptr->executioner = exit_executioner;
+				cmdptr->cmd_type = EXIT;
 				break;
 		}
 		$$ = cmdptr;
@@ -187,13 +203,13 @@ cmd: cmd_name
 				cmdptr->name = strdup("cd");
 				if (!(cmdptr->name))
 					err(1, "strdup");
-				cmdptr->executioner = cd_executioner;
+				cmdptr->cmd_type = CD;
 				break;
 			case EXIT:
 				cmdptr->name = strdup("exit");
 				if (!(cmdptr->name))
 					err(1, "strdup");
-				cmdptr->executioner = exit_executioner;
+				cmdptr->cmd_type = EXIT;
 				break;
 		}
 		$$ = cmdptr;

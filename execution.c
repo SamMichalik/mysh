@@ -20,46 +20,215 @@ char * prep_line(char *line);
 
 int cd_home(char *cwd);
 
-void
-exec_cmds(struct command **cmdv)
+int ch_dir(char **args);
+
+void exec_pipeline(CmdQueueHead *cmdqhptr);
+
+// void
+// exec_cmds(struct command **cmdv)
+// {
+// 	if (cmdv != NULL) {
+// 		while (*cmdv != NULL) {
+// 			/*
+// 			 * Count and relocate args so that cmd name is 1st.
+// 			 * This is provisional.
+// 			 */
+// 			int argc = 0;
+// 			char **args;
+// 			struct command *cmdptr = *cmdv;
+
+// 			if (cmdptr->args != NULL) {
+// 				args = cmdptr->args;
+// 				while (*(args + argc) != NULL) { argc++; }
+// 			}
+// 			char **argv = malloc((argc + 2) * sizeof (char *)); /* cmd + argv + NULL */
+// 			if (!argv) {
+// 				err(1, "malloc");
+// 			}
+// 			*argv = cmdptr->name;
+// 			for (int i = 0; i < argc; i++) {
+// 				*(argv + i + 1) = *(args + i);
+// 			}
+// 			*(argv + argc + 1) = NULL;
+
+// 			/* execute the command */
+// 			ret_val = cmdptr->executioner(cmdptr, argv);
+
+// 			/* release memory referenced by command contents */
+// 			destroy_cmd(cmdptr);
+// 			/* release the command structure */
+// 			free(cmdptr);
+// 			/* release the argument vector */
+// 			free(argv);
+
+// 			cmdv++;
+// 		}
+// 	}
+// }
+
+char **
+get_execvp_args(struct command *cmdptr)
 {
-	if (cmdv != NULL) {
-		while (*cmdv != NULL) {
-			/*
-			 * Count and relocate args so that cmd name is 1st.
-			 * This is provisional.
-			 */
-			int argc = 0;
-			char **args;
-			struct command *cmdptr = *cmdv;
+    if (cmdptr != NULL) {
+        char **args;
+        char **argv;
+        int argc = 0;
 
-			if (cmdptr->args != NULL) {
-				args = cmdptr->args;
-				while (*(args + argc) != NULL) { argc++; }
-			}
-			char **argv = malloc((argc + 2) * sizeof (char *)); /* cmd + argv + NULL */
-			if (!argv) {
-				err(1, "malloc");
-			}
-			*argv = cmdptr->name;
-			for (int i = 0; i < argc; i++) {
-				*(argv + i + 1) = *(args + i);
-			}
-			*(argv + argc + 1) = NULL;
-
-			/* execute the command */
-			ret_val = cmdptr->executioner(cmdptr, argv);
-
-			/* release memory referenced by command contents */
-			destroy_cmd(cmdptr);
-			/* release the command structure */
-			free(cmdptr);
-			/* release the argument vector */
-			free(argv);
-
-			cmdv++;
+        /* compute the number of arguments */
+        if (cmdptr->args != NULL) {
+            args = cmdptr->args;
+            while (*(args + argc) != NULL) { argc++; }
+        }
+        /* allocate space for the argument vector */
+        argv = malloc((argc + 2) * sizeof (char *)); /* cmd_name + argv + NULL */
+        if (!argv)
+            err(1, "malloc");
+        /* set the values of the array */
+        if (!cmdptr->name)
+            return NULL;
+        
+        *argv = cmdptr->name;
+		for (int i = 0; i < argc; i++) {
+			*(argv + i + 1) = *(args + i);
 		}
-	}
+		*(argv + argc + 1) = NULL;
+        
+        return argv;
+    }
+    return NULL;
+}
+
+void
+redirect(struct command *cmdptr)
+{
+    if (cmdptr->ldir != NULL) {
+        if (close(0) < 0) {
+            err(1, "close");
+        }
+        if (open(cmdptr->ldir, O_RDONLY) < 0) {
+            err(1, "open");
+        }
+    }
+
+    if (cmdptr->rdir != NULL) {
+        if (close(1) < 0) {
+            err(1, "close");
+        }
+        if (open(cmdptr->rdir, O_WRONLY | O_CREAT | O_TRUNC, 0666) < 0) {
+            err(1, "open");
+        }
+    }
+    else if (cmdptr->rrdir != NULL) {
+        if (close(1) < 0) {
+            err(1, "close");
+        }
+        if (open(cmdptr->rrdir, O_WRONLY | O_CREAT | O_APPEND, 0666) < 0) {
+            err(1, "open");
+        }
+    }
+}
+
+void
+exec_cmds(PipelineQueueHead *pqhptr)
+{
+    if (pqhptr != NULL) {
+        PipelineQueueEntry *eptr;
+
+        STAILQ_FOREACH(eptr, pqhptr, entries) {
+            /* each entry is a pipeline of commands */
+            CmdQueueHead *cqhptr = eptr->pipeptr;
+            exec_pipeline(cqhptr);
+            // release resources ?
+        }
+    }
+}
+
+void
+exec_pipeline(CmdQueueHead *cqhptr)
+{
+    if (cqhptr != NULL) {
+        CmdQueueEntry *eptr;
+        int stdin_dup_fd = dup(0);
+        int stdout_dup_fd = dup(1);
+        
+        if (stdin_dup_fd == -1)
+            err(1, "dup");
+        if (stdout_dup_fd == -1)
+            err(1, "dup");
+        
+
+        STAILQ_FOREACH(eptr, cqhptr, entries) {
+            struct command *cmdptr = eptr->cmdptr;
+
+            char **argv = get_execvp_args(cmdptr);
+
+            if (cmdptr->cmd_type == CD) {
+                ch_dir(argv);
+            }
+            else if (cmdptr->cmd_type == EXIT) {
+                exit(ret_val);
+            }
+            else {
+                if (eptr->entries.stqe_next != NULL) {
+                    fprintf(stderr, "detected inside pipeline\n");
+                    /* command has a succesor in the pipeline */
+                    int pd[2];
+                    
+                    if (pipe(pd) == -1)
+                        err(1, "pipe");
+                    
+                    switch(fork()) {
+                        case -1:
+                            err(1, "fork");
+                            break;
+                        case 0:
+                            /* child / producer */
+                            close(1);
+                            dup(pd[1]);
+                            close(pd[0]);
+                            close(pd[1]);
+                            /* execute command */
+                            redirect(cmdptr);
+                            execvp(cmdptr->name, argv);
+			                fprintf(stderr, "mysh: %s: No such file or directory\n", cmdptr->name);
+                			exit(127);
+                            break;
+                        default:
+                            /* parent / consumer */
+                            close(0);
+                            dup(pd[0]);
+                            close(pd[0]);
+                            close(pd[1]);
+                            break;
+                    }
+                }
+                else {
+                    fprintf(stderr, "detected no pipeline\n");
+                    /* last command in the pipeline */
+                    switch(fork()) {
+                        case -1:
+                            err(1, "fork");
+                            break;
+                        case 0:
+                            redirect(cmdptr);
+                            execvp(cmdptr->name, argv);
+                            fprintf(stderr, "mysh: %s: No such file or directory\n", cmdptr->name);
+                            exit(127);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+        }
+
+        close(0);
+        dup(stdin_dup_fd);
+        close(stdin_dup_fd);
+        close(1);
+        dup(stdout_dup_fd);
+        close(stdout_dup_fd);
+    }
 }
 
 int
@@ -72,42 +241,16 @@ general_executioner(struct command *cmdptr, char **args)
 		err(1, "sigemptyset");
 	if (sigaddset(&sigs, SIGINT) == -1)
 		err(1, "sigaddset");
-
-
 	if (sigprocmask(SIG_UNBLOCK, &sigs, NULL) == -1)
 		err(1, "sigprocmask");
+    
 	switch (pid = fork()) {
 		case -1:
 			err(1, "fork");
 			break;
 
 		case 0:
-            if (cmdptr->ldir != NULL) {
-                if (close(0) < 0) {
-                    err(1, "close");
-                }
-                if (open(cmdptr->ldir, O_RDONLY) < 0) {
-                    err(1, "open");
-                }
-            }
-
-            if (cmdptr->rdir != NULL) {
-                if (close(1) < 0) {
-                    err(1, "close");
-                }
-                if (open(cmdptr->rdir, O_WRONLY | O_CREAT | O_TRUNC, 0666) < 0) {
-                    err(1, "open");
-                }
-            }
-            else if (cmdptr->rrdir != NULL) {
-                if (close(1) < 0) {
-                    err(1, "close");
-                }
-                if (open(cmdptr->rrdir, O_WRONLY | O_CREAT | O_APPEND, 0666) < 0) {
-                    err(1, "open");
-                }
-            }
-
+            redirect(cmdptr);
 			execvp(cmdptr->name, args);
 			fprintf(stderr, "mysh: %s: No such file or directory\n", cmdptr->name);
 			exit(127);
@@ -130,9 +273,9 @@ general_executioner(struct command *cmdptr, char **args)
 }
 
 int
-cd_executioner(struct command *cmdptr, char **args)
+ch_dir(char **args)
 {
-	int ret_val = 0;
+    int ret_val = 0;
 
 	char *cwd = getcwd(NULL, 0);
 	if (!cwd) {
@@ -186,12 +329,6 @@ cd_executioner(struct command *cmdptr, char **args)
 
 	free(cwd);
 	return (ret_val);
-}
-
-int
-exit_executioner(struct command *cmdptr, char **args)
-{
-	exit(ret_val);
 }
 
 void

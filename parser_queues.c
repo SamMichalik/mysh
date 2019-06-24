@@ -194,3 +194,36 @@ destroy_cmd(struct command *cmdp)
 
 	free(cmdp->args);
 }
+
+/*
+ *  Pipeline queue function definitions
+ */
+
+PipelineQueueHead *
+initialize_pipeline_queue(PipelineQueueEntry *eptr)
+{
+	PipelineQueueHead *hptr = malloc(sizeof (PipelineQueueHead));
+	if (!hptr) {
+		err(1, "malloc");
+	}
+	STAILQ_INIT(hptr);
+	STAILQ_INSERT_TAIL(hptr, eptr, entries);
+	return (hptr);
+}
+
+PipelineQueueEntry *
+create_pipeline_queue_entry(CmdQueueHead *cmdqueue)
+{
+	PipelineQueueEntry *eptr = malloc(sizeof (PipelineQueueEntry));
+	if (!eptr) {
+		err(1, "malloc");
+	}
+	eptr->pipeptr = cmdqueue;
+	return (eptr);
+}
+
+void
+insert_pipeline_queue(PipelineQueueHead *hptr, PipelineQueueEntry *eptr)
+{
+	STAILQ_INSERT_TAIL(hptr, eptr, entries);
+}

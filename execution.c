@@ -197,6 +197,14 @@ exec_pipeline(CmdQueueHead *cqhptr)
             else {
                 int pid;
 
+                sigset_t sigs;
+	            if (sigemptyset(&sigs) == -1)
+		            err(1, "sigemptyset");
+	            if (sigaddset(&sigs, SIGINT) == -1)
+		            err(1, "sigaddset");
+	            if (sigprocmask(SIG_UNBLOCK, &sigs, NULL) == -1)
+		            err(1, "sigprocmask");
+
                 if (eptr->entries.stqe_next != NULL) {
                     /* command has a succesor in the pipeline */
                     int pd[2];
@@ -249,6 +257,8 @@ exec_pipeline(CmdQueueHead *cqhptr)
                             break;
                     }
                 }
+                if (sigprocmask(SIG_SETMASK, &sigs, NULL) == -1)
+				err(1, "sigprocmask");
             }
         }
 
@@ -259,7 +269,7 @@ exec_pipeline(CmdQueueHead *cqhptr)
                 if (waitpid(cmd_pids[i], &stat_loc, 0) == -1)
                     err(1, "waitpid");
                 if (WIFSIGNALED(stat_loc) != 0) {
-				    fprintf(stderr, "Killed by signal %d\n", WTERMSIG(stat_loc));
+				    fprintf(stderr, "Killed by signal %d.\n", WTERMSIG(stat_loc));
 				    ret_val = 128 + WTERMSIG(stat_loc);
 			    } else {
 				    ret_val = WEXITSTATUS(stat_loc);
@@ -269,47 +279,6 @@ exec_pipeline(CmdQueueHead *cqhptr)
 
         restore_std_io(stdin_dup_fd, stdout_dup_fd);
     }
-}
-
-int
-general_executioner(struct command *cmdptr, char **args)
-{
-	int pid, ret_val, i;
-
-	sigset_t sigs;
-	if (sigemptyset(&sigs) == -1)
-		err(1, "sigemptyset");
-	if (sigaddset(&sigs, SIGINT) == -1)
-		err(1, "sigaddset");
-	if (sigprocmask(SIG_UNBLOCK, &sigs, NULL) == -1)
-		err(1, "sigprocmask");
-    
-	switch (pid = fork()) {
-		case -1:
-			err(1, "fork");
-			break;
-
-		case 0:
-            redirect(cmdptr);
-			execvp(cmdptr->name, args);
-			fprintf(stderr, "mysh: %s: No such file or directory\n", cmdptr->name);
-			exit(127);
-			break;
-
-		default:
-			if (sigprocmask(SIG_SETMASK, &sigs, NULL) == -1)
-				err(1, "sigprocmask");
-			if (wait(&i) == -1)
-				err(1, "wait");
-			if (WIFSIGNALED(i) != 0) {
-				fprintf(stderr, "Killed by signal %d\n", WTERMSIG(i));
-				ret_val = 128 + WTERMSIG(i);
-			} else {
-				ret_val = WEXITSTATUS(i);
-			}
-			break;
-	}
-	return (ret_val);
 }
 
 int

@@ -12,8 +12,6 @@
 
 void exec_cmds(PipelineQueueHead * pqhptr);
 
-int general_executioner(struct command *cmdptr, char **args);
-
 void execute_script(char *scrpath);
 
 void execute_line(char *line);

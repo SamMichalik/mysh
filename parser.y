@@ -7,6 +7,7 @@
 #include "lex.yy.h"
 #include "parser_queues.h"
 #include "mysh.h"
+#include "command.h"
 
 void yyerror(char *s);
 
@@ -100,45 +101,17 @@ redir_cmd: base_cmd
     | redir_cmd RREDIR WORD
     {
         $$ = $1;
-        if ($$->rrdir) {
-            free($$->rrdir);
-            $$->rrdir = NULL;
-        }
-        if ($$->rdir) {
-            free($$->rdir);
-            $$->rdir = NULL;
-        }
-        char *s = strdup($3);
-		if (!s)
-			err(1, "strdup");
-        $$->rdir = s;
+        set_rdir($$, $3);
     }
     | redir_cmd RREDIR_APPEND WORD
     {
         $$ = $1;
-        if ($$->rrdir) {
-            free($$->rrdir);
-            $$->rrdir = NULL;
-        }
-        if ($$->rdir) {
-            free($$->rdir);
-            $$->rdir = NULL;
-        }
-        char *s = strdup($3);
-		if (!s)
-			err(1, "strdup");
-        $$->rrdir = s;
+        set_rrdir($$, $3);
     }
     | redir_cmd LREDIR WORD
     {
         $$ = $1;
-        if ($$->ldir) {
-            free($$->ldir);
-        }
-        char *s = strdup($3);
-		if (!s)
-			err(1, "strdup");
-        $$->ldir = s;
+        set_ldir($$, $3);
     }
 
 
@@ -147,12 +120,7 @@ base_cmd: cmd_name
 		struct command *cmdptr = malloc(sizeof(struct command));
 		if (!cmdptr)
 			err(1, "malloc");
-		cmdptr->name = $1;
-		cmdptr->args = NULL;
-		cmdptr->cmd_type = GENERAL;
-        cmdptr->ldir = NULL;
-        cmdptr->rdir = NULL;
-        cmdptr->rrdir = NULL;
+        init_cmd(cmdptr, $1, GENERAL);
 		$$ = cmdptr;
 	}
 	| cmd_name args_seq
@@ -160,12 +128,8 @@ base_cmd: cmd_name
 		struct command *cmdptr = malloc(sizeof(struct command));
 		if (!cmdptr)
 			err(1, "malloc");
-		cmdptr->name = $1;
 		cmdptr->args = string_queue_to_array($2);
-        cmdptr->cmd_type = GENERAL;
-        cmdptr->ldir = NULL;
-        cmdptr->rdir = NULL;
-        cmdptr->rrdir = NULL;
+        init_cmd(cmdptr, $1, GENERAL);
 		shallow_destroy_string_queue($2);
 		$$ = cmdptr;
 	}
@@ -177,16 +141,10 @@ base_cmd: cmd_name
 		cmdptr->args = NULL;
 		switch ($1) {
 			case CD:
-				cmdptr->name = strdup("cd");
-				if (!(cmdptr->name))
-					err(1, "strdup");
-				cmdptr->cmd_type = CD;
+                init_cmd(cmdptr, "cd", CD);
 				break;
 			case EXIT:
-				cmdptr->name = strdup("exit");
-				if (!(cmdptr->name))
-					err(1, "strdup");
-				cmdptr->cmd_type = EXIT;
+				init_cmd(cmdptr, "exit", EXIT);
 				break;
 		}
 		$$ = cmdptr;
@@ -196,20 +154,15 @@ base_cmd: cmd_name
 		struct command *cmdptr = malloc(sizeof(struct command));
 		if (!cmdptr)
 			err(1, "malloc");
+
 		cmdptr->args = string_queue_to_array($2);
 		shallow_destroy_string_queue($2);
 		switch ($1) {
 			case CD:
-				cmdptr->name = strdup("cd");
-				if (!(cmdptr->name))
-					err(1, "strdup");
-				cmdptr->cmd_type = CD;
+				init_cmd(cmdptr, "cd", CD);
 				break;
 			case EXIT:
-				cmdptr->name = strdup("exit");
-				if (!(cmdptr->name))
-					err(1, "strdup");
-				cmdptr->cmd_type = EXIT;
+				init_cmd(cmdptr, "exit", EXIT);
 				break;
 		}
 		$$ = cmdptr;

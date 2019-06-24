@@ -36,10 +36,4 @@ int ret_val;
 
 int lineno;
 
-enum cmd_type {
-	CD,
-	EXIT,
-    GENERAL
-};
-
 #endif /* _MYSH_H */

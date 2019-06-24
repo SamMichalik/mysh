@@ -15,6 +15,7 @@
 #include "lex.yy.h"
 #include "mysh.h"
 #include "parser_queues.h"
+#include "command.h"
 
 char * prep_line(char *line);
 

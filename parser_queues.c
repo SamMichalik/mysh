@@ -5,6 +5,7 @@
 
 #include "parser_queues.h"
 #include "mysh.h"
+#include "command.h"
 
 /*
  *	String queue function definitions

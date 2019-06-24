@@ -3,6 +3,8 @@
 
 #include <sys/queue.h>
 
+#include "command.h"
+
 /*
  *	Structure declarations
  */
@@ -26,17 +28,6 @@ STAILQ_HEAD(pipeline_queue_head, pipeline_queue_entry);
 struct pipeline_queue_entry {
     struct cmd_queue_head *pipeptr;
     STAILQ_ENTRY(pipeline_queue_entry) entries;
-};
-
-struct command {
-	char *name;
-	char **args;
-    char *ldir;
-    char *rdir;
-    char *rrdir;
-    int cmd_type;
-	/* int (*executioner)(char *name, char **args); */
-    /* int (*executioner)(struct command *cmdptr, char **args); */
 };
 
 /*

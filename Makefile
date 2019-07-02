@@ -3,13 +3,13 @@ OBJ_FILES = mysh.o execution.o parser_queues.o util.o command.o
 CFLAGS = -Wall
 
 ifeq (`uname`,Darwin)
-	FLEX = -ll
+	LDLIBS = -ll -lreadline
 else
-	FLEX = -lfl
+	LDLIBS = -lfl -lreadline
 endif
 
 mysh:	$(OBJ_FILES) parser.tab.c lex.yy.c
-		cc $(CFLAGS) -o $(OUT) $(OBJ_FILES) parser.tab.c lex.yy.c $(FLEX) -lreadline
+		cc $(CFLAGS) -o $(OUT) $(OBJ_FILES) parser.tab.c lex.yy.c $(LDFLAGS) $(LDLIBS)
 
 parser.tab.c:	parser.y
 				bison -d parser.y
